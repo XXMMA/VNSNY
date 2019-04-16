@@ -24,7 +24,7 @@ globals [
   nhats-ratio-each-type ; key : [type attrname] value : [[value1 value2 ....] [ratio1 ratio2]]
   weights ; key : [type ER/Office] value : [attr-weight social-weight effic-weight]
   attr-names
-  normalize-factor
+  normalize-factor ; ker : ["attitude"/"social_norm"/"efficacy"] value :[factor intercept]
   num-each-type
   num-er-each-type
   num-off-cl-each-type
