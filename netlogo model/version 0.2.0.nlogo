@@ -1,19 +1,30 @@
-extensions [gis view2.5d csv]
+extensions [gis view2.5d csv table]
 
+; it might be confusion but the Community District number is refered to as CD or boroCD in this project
 globals [
+  ;date
+  year
+  start-year
+  day
   ;var used for environment display
   mouse-was-down?
   nyCDs-dataset
+  heatmap-flag
   mouse-was-clicked?
   map-block-color
   map-line-color
   map-highlight-color
   heatmap-color
-  id-CDs
   boroCD-CDs
   maxval
   minval
   ;var used for model
+  pop-ratio-each-type ; key : type value : ratio
+  pop-ratio-CD-in-each-type ; key type  value : [ [CDs] [ratios] ]
+  nhats-ratio-each-type ; key : [type attrname] value : [[value1 value2 ....] [ratio1 ratio2]]
+  weights ; key : [type ER/Office] value : [attr-weight social-weight effic-weight]
+  attr-names
+  normalize-factor
   num-each-type
   num-er-each-type
   num-off-cl-each-type
@@ -41,7 +52,6 @@ patches-own[
 
 people-own[
   boroCD
-  boroCD-id
   age ;0: 75 and above, 1: below 75
   gender ;0:female, 1:male
   race ;0: non-white, 1: white
@@ -53,18 +63,18 @@ people-own[
   feel-bored ; wb1offelche2
   feel-full-of-life ; wb1offelche3
   feel-upset ; wb1offelche4
-  depression;0: no depression, 1: have depression
+  ;depression;0: no depression, 1: have depression
   ;social norm
   adjust-to-change ; wb1agrwstmt3
   self-determin ; wb1agrwstmt1
-  have-caregiver ;
+  ;have-caregiver ;
   know-each-other ; cm1knowwell
   willing-help-each-other ; cm1willnghlp
   can-be-trusted ; cm1peoptrstd
   no-one-talk-to ; fl1noonetalk
   ; efficacy
-  income ;
-  education ;
+  income ; ia1totinc
+  education ; el1higstschl
   ;state var
   los
   state
@@ -74,8 +84,8 @@ people-own[
   choice-record ; [stay-at-home er office-clinics]
   hospitalization ; num of hospitalization
   next-decision
-
 ]
+
 nyCDs-own[
   boroCD
   trans_num
@@ -94,71 +104,32 @@ nyCDs-own[
   pop_dens
   pct_non_res
   chosen-info
-  ;CTLABEL
-  ;BORONAME
-  ;CT2000
-  ;BOROCT2000
-  ;CDELIGIBIL
-  ;NTACODE
-  ;NTANAME
-  ;PUMA
-  ;SHAPE_LENG
-  ;SHAPE_AREA
-  ;population-density
-  ;poverty-rate
-  ;unemployment
-  ;bus-density
-  ;sub-density
-  ;sub-access
-  ;intersection-access
-  ;landuse-index
-  ;tax-non-tax-residence-use-use
-  ;tax-residence-use
-  ;prop-transportation-to-work
-  ;prop-walk-to-work
-  ;prop-over65
-  ;prop-nonwhite
-  ;boro-code-num
-  ;precinct-population
-  ;precinct
-  ;offense-per-capita
-  ;num_er_08
-  ;er_charges_08
-  ;num_er_09
-  ;er_charges_09
-  ;num_er_10
-  ;er_charges_10
-  ;tot_er_pats
-  ;tot_er_charges
-  ;num_pat_08
-  ;charges_08
-  ;num_pat_09
-  ;charges_09
-  ;num_pat_10
-  ;charges_10
-  ;tot_pats
-  ;tot_charges
-  ;num_high_utils_08
-  ;num_high_utils_09
-  ;num_high_utils_10
 ]
 
 chosen-CDs-own[
   boroCD
   CD-id
 ]
-
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------Setup--------------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to setup
   ca
   stop-inspecting-dead-agents
+  setup-CD
+  ;load-CMS-info
+  setup-people
+  setup-var
+  reset-ticks
+end
+
+;;-------------------------------------------------------Setup Community District Environment-------------------------------------------------------------------
+;;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+to setup-CD
   load-CDs
   load-CDs-shape
   load-CDs-info
-  ;load-CMS-info
   map-patches
-  generate-people
-  setup-var
-  reset-ticks
 end
 
 to load-CDs
@@ -174,8 +145,7 @@ to load-CDs
 end
 
 to load-CDs-shape
-  set id-CDs []
-  set boroCD-CDs []
+  set boroCD-CDs table:make
   foreach gis:feature-list-of nyCDs-dataset[ one-block ->
     gis:set-drawing-color map-line-color
     gis:draw one-block 1.0
@@ -184,20 +154,9 @@ to load-CDs-shape
       sprout-nyCDs 1[
         ht
         set shape "star"
-        ;set CTLABEL gis:property-value one-block "CTLABEL"
-        ;set BOROCODE gis:property-value one-block "BOROCODE"
-        ;set BORONAME gis:property-value one-block "BORONAME"
         set boroCD gis:property-value one-block "BOROCD"
-        ;set BOROCT2000 read-from-string gis:property-value one-block "BOROCT2000"
-        ;set CDELIGIBIL gis:property-value one-block "CDELIGIBIL"
-        ;set NTACODE gis:property-value one-block "NTACODE"
-        ;set NTANAME gis:property-value one-block "NTANAME"
-        ;set PUMA gis:property-value one-block "PUMA"
-        ;set SHAPE_LENG gis:property-value one-block "SHAPE_LENG"
-        ;set SHAPE_AREA gis:property-value one-block "SHAPE_AREA"
         setxy first centroid last centroid
-        set id-CDs lput who id-CDs
-        set boroCD-CDs lput boroCD boroCD-CDs
+        table:put boroCD-CDs boroCD who
       ]
     ]
   ]
@@ -240,54 +199,198 @@ to map-patches
   file-close-all
 end
 
-to generate-people
-  let pos position 104 boroCD-CDs
-  let x-y-cor [list xcor ycor] of nyCD item pos id-CDs
-  create-people num-agents[
-    set boroCD 104
-    set boroCD-id item pos id-CDs
-    set age random 2
-    set gender random 2
-    set race random 2
-    set dual-eligible random 2
-    set agent-type (age + 2 * gender + 4 * race + 8 * dual-eligible)
-    set want-find-way-to random 3 - 1
-    set feel-cheerful random 5 - 2
-    set feel-bored random 5 - 2
-    set feel-full-of-life random 5 - 2
-    set feel-upset random 5 - 2
-    set depression random 2
-    set self-determin random 3 - 1
-    set have-caregiver random 2
-    set know-each-other random 3 - 1
-    set willing-help-each-other random 3 - 1
-    set can-be-trusted random 3 - 1
-    setxy item 0 x-y-cor item 1 x-y-cor
-    set severity random 3 + 1
-    set income random 3 + 1
-    set education random 9 + 1
-    move-to one-of patches with [mapping-boroCD = [boroCD] of myself]
-    setxy xcor + (random-float 1) - 0.5 ycor + (random-float 1) - 0.5
-  ]
+;-----------------------------------------------------------Setup people agents----------------------------------------------------------------------------
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+to setup-people
+  load-pop-distribution
+  generate-people
+  assign-attr-to-people
+end
+;----------------------------------------------------------------load-pop-distribution----------------------------------------------------------------------
+to load-pop-distribution
+  load-pop-ratio-each-type
+  load-pop-ratio-CD-in-each-type
+  load-nhats-ratio-each-type
 end
 
-to setup-var
-  set max-dens max [pop_dens] of nyCDs
-  set num-each-type []
-  foreach n-values 8 [i -> i] [i ->
-    set num-each-type lput (count people with [agent-type = i]) num-each-type
+to load-pop-ratio-each-type
+  set pop-ratio-each-type table:make
+  file-open "data\\ratio_type_over_whole_NYC.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put pop-ratio-each-type item 0 row item 1 row
   ]
+  file-close-all
+end
+
+to load-pop-ratio-CD-in-each-type
+  set pop-ratio-CD-in-each-type table:make
+  file-open "data\\ratio_CD_within_each_type.csv" ; this file !!!MUST!!! sort on type in the first column
+  let headings csv:from-row file-read-line
+  let CD-list []
+  let ratio-list []
+  let last-key -1
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    if item 0 row != last-key [
+      if last-key != -1 [
+        table:put pop-ratio-CD-in-each-type last-key list CD-list ratio-list
+      ]
+      set CD-list []
+      set ratio-list []
+      set last-key item 0 row
+    ]
+    set CD-list lput item 1 row CD-list
+    set ratio-list lput item 2 row ratio-list
+  ]
+  table:put pop-ratio-CD-in-each-type last-key list CD-list ratio-list
+  file-close-all
+end
+
+to test
+  print 1
+end
+
+to load-nhats-ratio-each-type
+  set nhats-ratio-each-type table:make
+  file-open "data\\nhats_attr_each_type.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    set row remove "" row
+    let index (range 4 length row 2)
+    let value-list []
+    let ratio-list []
+    foreach index [ i ->
+      set value-list lput item i row value-list
+      set ratio-list lput item (i + 1) row ratio-list
+    ]
+    table:put nhats-ratio-each-type (list item 0 row item 1 row) (list value-list ratio-list)
+  ]
+  file-close-all
+end
+
+;----------------------------------------------------------------generate-people----------------------------------------------------------------------
+to-report partition-under-prob [total prob-list]
+  let accprob 0
+  let accnum 0
+  let partition-list []
+  (foreach prob-list [ this-prob ->
+    set accprob accprob + this-prob
+    let num round (accprob * total) - accnum
+    set partition-list lput num partition-list
+    set accnum accnum + num
+  ])
+  if accnum != total [
+    set partition-list replace-item (length partition-list - 1) partition-list (last partition-list + total - accnum)
+  ]
+  report partition-list
+end
+
+to generate-people
+  ; pop-ratio-each-type => key : type value : ratio
+  let type-list table:keys pop-ratio-each-type
+  let type-ratio-list table:values pop-ratio-each-type
+  let partition-list partition-under-prob num-agents type-ratio-list
+  set num-each-type partition-list
+  (foreach type-list partition-list [ [this-type this-type-partition] ->
+    ; pop-ratio-CD-in-each-type => key type  value: [ [CDs] [ratios] ]
+    let CD-list item 0 table:get pop-ratio-CD-in-each-type this-type
+    let CD-ratio-list item 1 table:get pop-ratio-CD-in-each-type this-type
+    let this-partition-list partition-under-prob this-type-partition CD-ratio-list
+    (foreach CD-list this-partition-list [ [this-CD this-partition] ->
+      create-people this-partition[
+        set agent-type this-type
+        set boroCD this-CD
+        move-to one-of patches with [mapping-boroCD = [boroCD] of myself]
+      ]
+    ])
+  ])
+end
+
+;-----------------------------------------------------------assign attributes to people-------------------------------------------------------------------
+to-report random-choice-under-prob [choice-list prob-list]
+  let dice random-float 1
+  let accprob 0
+  (foreach choice-list prob-list [ [this-choice this-prob] ->
+    set accprob accprob + this-prob
+    if dice < accprob [
+      report this-choice
+    ]
+  ])
+  report last choice-list
+end
+
+to parse-type
+  ;set agent-type (age + 2 * gender + 4 * race + 8 * dual-eligible)
+  set dual-eligible bitwise-and agent-type 8
+  set race bitwise-and agent-type 4
+  set gender bitwise-and agent-type 2
+  set age bitwise-and agent-type 1
+end
+
+to-report bitwise-and [num digit]
+  report int (num / digit) mod 2
+end
+
+to assign-attr-to-people
+  set attr-names ["want-find-way-to" "feel-cheerful" "feel-bored" "feel-full-of-life" "feel-upset" "adjust-to-change" "self-determin"
+    "know-each-other" "willing-help-each-other" "can-be-trusted" "no-one-talk-to" "income" "education"]
+  ;nhats-ratio-each-type => key : [type attrname] value: [[value1 value2 ....] [ratio1 ratio2]]
+  foreach table:keys pop-ratio-each-type [ this-type ->
+    let attr-dict table:make
+    foreach attr-names [this-attr ->
+      table:put attr-dict this-attr (table:get nhats-ratio-each-type (list this-type this-attr))
+    ]
+    ask people with [agent-type = this-type][
+      parse-type
+      foreach attr-names [this-attr ->
+        let the-choice random-choice-under-prob (item 0 table:get attr-dict this-attr) (item 1 table:get attr-dict this-attr)
+        run (word "set " this-attr " " the-choice)
+      ]
+    ]
+  ]
+
+end
+
+;-----------------------------------------------------------------Setup global variables------------------------------------------------------------------------
+to setup-var
+  load-normalize-factor
+  load-weights
+  set max-dens max [pop_dens] of nyCDs
+  set heatmap-flag false
   set num-er-each-type n-values 16 [0]
   set num-off-cl-each-type n-values 16 [0]
   set num-stay-each-type n-values 16 [0]
   set num-decisions-each-type n-values 16 [0]
-  set EM-cost-edu-transreq-effect (list 5 4 4 1)
-  set ER-cost-edu-transreq-effect (list 2 1 2 4)
-  set Hospital-cost-edu-transreq-effect (list 1 5 1 5)
-  set SNF-cost-edu-transreq-effect (list 4 3 3 3)
-  set Homecare-cost-edu-transreq-effect (list 3 2 5 2)
 end
 
+to load-normalize-factor ; "attitude" "social_norm" "efficacy"  ****normalized = factor * attitude/social_norm/effficacy + intercept***
+  set normalize-factor table:make
+  file-open "data\\normalize_factors.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put normalize-factor item 0 row (list item 1 row item 2 row)
+  ]
+  file-close-all
+end
+
+to load-weights
+  set weights table:make
+  file-open "data\\weights.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put normalize-factor (list item 0 row item 1 row) (list item 2 row item 3 row item 4 row)
+  ]
+  file-close-all
+end
+
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+;---------------------------------------------------------------Decision making--------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to go
   make-decision
   ;update-var
@@ -303,47 +406,33 @@ to make-decision
       set next-decision next-decision - 1
       if next-decision <= 0
       [
-
         set num-decisions-each-type replace-item i num-decisions-each-type (item i num-decisions-each-type + 1)
         let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
-        let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_hc_er * have-caregiver
-        let efficacy_er w_inc_er * income + w_edu_er * education + w_trans_er * [trans_num] of nyCD borocd-id
-        let intension_er wa_er * attitude_er + ws_er * social-norm_er * motivation_er + we_er * efficacy_er
+        let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_atc_er * adjust-to-change - w_noto_er * no-one-talk-to
+        let efficacy_er w_inc_er * income + w_edu_er * education
+        let intention_er wa_er * attitude_er + ws_er * social-norm_er * motivation_er + we_er * efficacy_er
 
         let attitude_off-cl  w_wfwt_off-cl * want-find-way-to + w_fc_off-cl * feel-cheerful - w_fb_off-cl * feel-bored + w_ffol_off-cl * feel-full-of-life - w_fu_off-cl * feel-upset
-        let motivation_off-cl w_keo_off-cl * know-each-other + w_wheo_off-cl * willing-help-each-other + w_cbt_off-cl * can-be-trusted - w_sd_off-cl * self-determin + w_hc_off-cl * have-caregiver
-        let efficacy_off-cl w_inc_off-cl * income + w_edu_off-cl * education + w_trans_off-cl * [trans_num] of nyCD borocd-id
-        let intension_off-cl wa_off-cl * attitude_off-cl + ws_off-cl * social-norm_off-cl * motivation_off-cl + we_off-cl * efficacy_off-cl
+        let motivation_off-cl w_keo_off-cl * know-each-other + w_wheo_off-cl * willing-help-each-other + w_cbt_off-cl * can-be-trusted - w_sd_off-cl * self-determin + w_atc_off-cl * adjust-to-change - w_noto_off-cl * no-one-talk-to
+        let efficacy_off-cl w_inc_off-cl * income + w_edu_off-cl * education
+        let intention_off-cl wa_off-cl * attitude_off-cl + ws_off-cl * social-norm_off-cl * motivation_off-cl + we_off-cl * efficacy_off-cl
 
-        let attitude_stay  w_wfwt_stay * want-find-way-to + w_fc_stay * feel-cheerful - w_fb_stay * feel-bored + w_ffol_stay * feel-full-of-life - w_fu_stay * feel-upset
-        let motivation_stay w_keo_stay * know-each-other + w_wheo_stay * willing-help-each-other + w_cbt_stay * can-be-trusted - w_sd_stay * self-determin + w_hc_stay * have-caregiver
-        let efficacy_stay w_inc_stay * income + w_edu_stay * education + w_trans_stay * [trans_num] of nyCD borocd-id
-        let intension_stay wa_stay * attitude_stay + ws_stay * social-norm_stay * motivation_stay + we_stay * efficacy_stay
+        let max-intention max (list intention_er intention_off-cl)
 
-        let max-intension max (list intension_er intension_off-cl intension_stay wa_stay)
-
-        ifelse max-intension = intension_stay
+        ifelse max-intention = intention_er
         [
-          set choice 0
-          set state 13
-          set num-stay-each-type replace-item i num-stay-each-type (item i num-stay-each-type + 1)
+          set num-er-each-type replace-item i num-er-each-type (item i num-er-each-type + 1)
+          set choice 1
+          let rand random 100
+          if rand < prob-hosp-after-er
+          [hospitalize]
         ]
         [
-          ifelse max-intension = intension_er
-          [
-            set num-er-each-type replace-item i num-er-each-type (item i num-er-each-type + 1)
-            set choice 1
-            let rand random 100
-            if rand < prob-hosp-after-er
-            [hospitalize]
-          ]
-          [
-            set num-off-cl-each-type replace-item i num-stay-each-type (item i num-off-cl-each-type + 1)
-            set choice 2
-            let rand random 100
-            if rand < prob-hosp-after-office-clinic
-            [hospitalize]
-          ]
+          set num-off-cl-each-type replace-item i num-stay-each-type (item i num-off-cl-each-type + 1)
+          set choice 2
+          let rand random 100
+          if rand < prob-hosp-after-office-clinic
+          [hospitalize]
         ]
         set next-decision random 7
       ]
@@ -384,6 +473,9 @@ to cancel-last-chosen
         gis:set-drawing-color map-line-color
         gis:draw last-CD 1.0
       ]
+      if heatmap-flag [
+        show-heatmap-oneCD CD-id boroCD
+      ]
       die
     ]
   ]
@@ -412,11 +504,6 @@ to create-new-chosen
   ]
 end
 
-
-;to test
-;  view2.5d:turtle-view "Test" census-tracts [the-tract -> [CT2000] of the-tract]
-;end
-
 to-report mouse-clicked?
   report (mouse-was-down? = true and not mouse-down?)
 end
@@ -428,40 +515,15 @@ to test-draw-different-brough
   tick
 end
 
-;to load-CMS-info
-;  foreach csv:from-file "CMS_patient.csv" [row ->
-;    ask census-tracts with [BOROCT2000 = item 0 row][
-;      set num_er_08 item 2 row
-;      set er_charges_08 item 3 row
-;      set num_er_09 item 4 row
-;      set er_charges_09 item 5 row
-;      set num_er_10 item 6 row
-;      set er_charges_10 item 7 row
-;      set tot_er_pats item 8 row
-;      set tot_er_charges item 9 row
-;      set num_pat_08 item 10 row
-;      set charges_08 item 11 row
-;      set num_pat_09 item 12 row
-;      set charges_09 item 13 row
-;      set num_pat_10 item 14 row
-;      set charges_10 item 15 row
-;      set tot_pats item 16 row
-;      set tot_charges item 17 row
-;      set num_high_utils_08 item 18 row
-;      set num_high_utils_09 item 19 row
-;      set num_high_utils_10 item 20 row
-;    ]
-;  ]
-;end
-
-
 to show-heatmap
   clear-map
   check-min-max-val
+  set heatmap-flag true
   ;show runresult (word "[" heatmap-info "] of census-tract 10")
-  let val 0
-  (foreach (gis:feature-list-of nyCDs-dataset) id-CDs [ [one-block id] ->
-    ask nycd id [set val runresult heatmap-info]
+  ;gis:property-value one-block "BOROCD"
+  ;table:values boroCD-CDs
+  (foreach (gis:feature-list-of nyCDs-dataset)  [ one-block ->
+    let val [runresult heatmap-info] of nycd table:get boroCD-CDs gis:property-value one-block "BOROCD"
     if val != ""[
       gis:set-drawing-color scale-color heatmap-color val minval maxval
       gis:fill one-block 1.0
@@ -469,7 +531,17 @@ to show-heatmap
   ])
 end
 
+to show-heatmap-oneCD [CDid this-boroCD]
+  let val [runresult heatmap-info] of nycd CDid
+    if val != ""[
+      gis:set-drawing-color scale-color heatmap-color val minval maxval
+      gis:fill gis:find-one-feature nyCDs-dataset "BOROCD" (word boroCD) 1.0
+    ]
+end
+
+
 to clear-map
+   set heatmap-flag false
    foreach gis:feature-list-of nyCDs-dataset[ one-block ->
     gis:set-drawing-color map-block-color
     gis:fill one-block  1.0
@@ -639,7 +711,7 @@ INPUTBOX
 174
 208
 num-agents
-0.0
+1000.0
 1
 0
 Number
@@ -732,7 +804,7 @@ INPUTBOX
 166
 896
 w_wfwt_er
-0.0
+1.0
 1
 0
 Number
@@ -743,7 +815,7 @@ INPUTBOX
 322
 896
 w_fc_er
-0.0
+1.0
 1
 0
 Number
@@ -754,7 +826,7 @@ INPUTBOX
 478
 896
 w_fb_er
-0.0
+1.0
 1
 0
 Number
@@ -765,7 +837,7 @@ INPUTBOX
 634
 896
 w_ffol_er
-0.0
+1.0
 1
 0
 Number
@@ -776,7 +848,7 @@ INPUTBOX
 790
 896
 w_fu_er
-0.0
+1.0
 1
 0
 Number
@@ -787,7 +859,7 @@ INPUTBOX
 965
 896
 w_keo_er
-0.0
+1.0
 1
 0
 Number
@@ -798,7 +870,7 @@ INPUTBOX
 1121
 896
 w_wheo_er
-0.0
+1.0
 1
 0
 Number
@@ -809,7 +881,7 @@ INPUTBOX
 1277
 896
 w_cbt_er
-0.0
+1.0
 1
 0
 Number
@@ -820,7 +892,7 @@ INPUTBOX
 1433
 896
 w_sd_er
-0.0
+1.0
 1
 0
 Number
@@ -830,74 +902,63 @@ INPUTBOX
 836
 1589
 896
-w_hc_er
-0.0
+w_atc_er
+1.0
 1
 0
 Number
 
 INPUTBOX
-1606
-836
-1761
-896
+1766
+837
+1921
+897
 w_inc_er
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-1762
-836
-1917
-896
+1922
+837
+2077
+897
 w_edu_er
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-1918
-836
-2073
-896
-w_trans_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-836
-2246
-896
+2098
+837
+2253
+897
 wa_er
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-2247
-836
-2402
-896
+2254
+837
+2409
+897
 ws_er
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-2404
-836
-2559
-896
+2411
+837
+2566
+897
 we_er
-0.0
+1.0
 1
 0
 Number
@@ -908,7 +969,7 @@ INPUTBOX
 166
 986
 w_wfwt_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -919,7 +980,7 @@ INPUTBOX
 322
 986
 w_fc_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -930,7 +991,7 @@ INPUTBOX
 478
 986
 w_fb_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -941,7 +1002,7 @@ INPUTBOX
 634
 986
 w_ffol_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -952,7 +1013,7 @@ INPUTBOX
 790
 986
 w_fu_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -963,7 +1024,7 @@ INPUTBOX
 965
 986
 w_keo_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -974,7 +1035,7 @@ INPUTBOX
 1121
 986
 w_wheo_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -985,7 +1046,7 @@ INPUTBOX
 1277
 986
 w_cbt_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -996,7 +1057,7 @@ INPUTBOX
 1433
 986
 w_sd_off-cl
-0.0
+1.0
 1
 0
 Number
@@ -1006,250 +1067,113 @@ INPUTBOX
 926
 1589
 986
-w_hc_off-cl
-0.0
+w_atc_off-cl
+1.0
 1
 0
 Number
 
 INPUTBOX
-1606
-926
-1761
-986
+1766
+927
+1921
+987
 w_inc_off-cl
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-1762
-926
-1917
-986
+1922
+927
+2077
+987
 w_edu_off-cl
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-1918
-926
-2073
-986
-w_trans_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-926
-2246
-986
+2098
+927
+2253
+987
 wa_off-cl
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-2247
-926
-2402
-986
+2254
+927
+2409
+987
 ws_off-cl
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-2404
-926
-2559
-986
+2411
+927
+2566
+987
 we_off-cl
-0.0
+1.0
 1
 0
 Number
 
 INPUTBOX
-11
-1016
-166
-1076
-w_wfwt_stay
+21
+332
+172
+392
+total_sample
 0.0
 1
 0
 Number
 
+BUTTON
+217
+217
+280
+250
+NIL
+test
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 INPUTBOX
-167
-1016
-322
-1076
-w_fc_stay
-0.0
+1590
+836
+1745
+896
+w_noto_er
+1.0
 1
 0
 Number
 
 INPUTBOX
-323
-1016
-478
-1076
-w_fb_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-479
-1016
-634
-1076
-w_ffol_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-635
-1016
-790
-1076
-w_fu_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-810
-1016
-965
-1076
-w_keo_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-966
-1016
-1121
-1076
-w_wheo_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1122
-1016
-1277
-1076
-w_cbt_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1278
-1016
-1433
-1076
-w_sd_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1434
-1016
-1589
-1076
-w_hc_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1606
-1016
-1761
-1076
-w_inc_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1762
-1016
-1917
-1076
-w_edu_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1918
-1016
-2073
-1076
-w_trans_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-1016
-2246
-1076
-wa_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2247
-1016
-2402
-1076
-ws_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2404
-1016
-2559
-1076
-we_stay
-0.0
+1590
+926
+1745
+986
+w_noto_off-cl
+1.0
 1
 0
 Number

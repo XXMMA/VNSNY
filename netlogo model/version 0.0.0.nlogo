@@ -15,10 +15,8 @@ globals [
   minval
   ;var used for model
   num-each-type
-  num-er-each-type
-  num-off-cl-each-type
-  num-stay-each-type
-  num-decisions-each-type
+  num-treatment-each-type
+  num-non-treatment-each-type
   max-dens
   weights-attitude
   weights-social-norm
@@ -27,54 +25,39 @@ globals [
   Hospital-cost-edu-transreq-effect
   SNF-cost-edu-transreq-effect
   Homecare-cost-edu-transreq-effect
-  prob-hosp-after-er
-  prob-hosp-after-office-clinic
 ]
 
 breed[nyCDs nyCD]
 breed[chosen-CDs chosen-CD]
 breed[people person]
 
-patches-own[
-  mapping-boroCD
-]
-
 people-own[
   boroCD
   boroCD-id
-  age ;0: 75 and above, 1: below 75
+  age ;0: above 75, 1: 75 and below
   gender ;0:female, 1:male
   race ;0: non-white, 1: white
-  dual-eligible ;0: no, 1: yes
   agent-type
   ;attitude
-  want-find-way-to ; wb1agrwstmt2
-  feel-cheerful ; wb1offelche1
-  feel-bored ; wb1offelche2
-  feel-full-of-life ; wb1offelche3
-  feel-upset ; wb1offelche4
+  want-find-way-to
+  feel-cheerful
+  feel-bored
+  feel-full-of-life
+  feel-upset
   depression;0: no depression, 1: have depression
   ;social norm
-  adjust-to-change ; wb1agrwstmt3
-  self-determin ; wb1agrwstmt1
-  have-caregiver ;
-  know-each-other ; cm1knowwell
-  willing-help-each-other ; cm1willnghlp
-  can-be-trusted ; cm1peoptrstd
-  no-one-talk-to ; fl1noonetalk
-  ; efficacy
-  income ;
-  education ;
+  self-determin
+  have-caregiver
+  know-each-other
+  willing-help-each-other
+  can-be-trusted
   ;state var
-  los
   state
   get-treatment
-  choice ;0: stay at home, 1: er, 2: office-clinics
+  chosen-facility
   severity
-  choice-record ; [stay-at-home er office-clinics]
-  hospitalization ; num of hospitalization
-  next-decision
-
+  income
+  education
 ]
 nyCDs-own[
   boroCD
@@ -155,7 +138,6 @@ to setup
   load-CDs-shape
   load-CDs-info
   ;load-CMS-info
-  map-patches
   generate-people
   setup-var
   reset-ticks
@@ -225,21 +207,6 @@ to load-CDs-info
   ]
 end
 
-
-to map-patches
-  file-open "patches_boroCD.csv"
-  let headings csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    let x item 0 row
-    let y item 1 row
-    ask patch x y [
-      set mapping-boroCD item 2 row
-    ]
-  ]
-  file-close-all
-end
-
 to generate-people
   let pos position 104 boroCD-CDs
   let x-y-cor [list xcor ycor] of nyCD item pos id-CDs
@@ -249,8 +216,7 @@ to generate-people
     set age random 2
     set gender random 2
     set race random 2
-    set dual-eligible random 2
-    set agent-type (age + 2 * gender + 4 * race + 8 * dual-eligible)
+    set agent-type (age + 2 * gender + 4 * race)
     set want-find-way-to random 3 - 1
     set feel-cheerful random 5 - 2
     set feel-bored random 5 - 2
@@ -266,21 +232,19 @@ to generate-people
     set severity random 3 + 1
     set income random 3 + 1
     set education random 9 + 1
-    move-to one-of patches with [mapping-boroCD = [boroCD] of myself]
-    setxy xcor + (random-float 1) - 0.5 ycor + (random-float 1) - 0.5
   ]
 end
 
 to setup-var
   set max-dens max [pop_dens] of nyCDs
+  set weights-attitude (list wa0 wa1 wa2 wa3 wa4 wa5 wa6 wa7)
+  set weights-social-norm (list ws0 ws1 ws2 ws3 ws4 ws5 ws6 ws7)
   set num-each-type []
   foreach n-values 8 [i -> i] [i ->
     set num-each-type lput (count people with [agent-type = i]) num-each-type
   ]
-  set num-er-each-type n-values 16 [0]
-  set num-off-cl-each-type n-values 16 [0]
-  set num-stay-each-type n-values 16 [0]
-  set num-decisions-each-type n-values 16 [0]
+  set num-treatment-each-type n-values 8 [0]
+  set num-non-treatment-each-type n-values 8 [0]
   set EM-cost-edu-transreq-effect (list 5 4 4 1)
   set ER-cost-edu-transreq-effect (list 2 1 2 4)
   set Hospital-cost-edu-transreq-effect (list 1 5 1 5)
@@ -290,77 +254,45 @@ end
 
 to go
   make-decision
-  ;update-var
+  update-var
   tick
 end
 
 to make-decision
-  foreach n-values 16 [i -> i] [ i ->
-    let social-norm_er item i num-er-each-type  / item i num-decisions-each-type
-    let social-norm_off-cl item i num-off-cl-each-type  / item i num-decisions-each-type
-    let social-norm_stay item i num-stay-each-type  / item i num-decisions-each-type
+  foreach n-values 8 [i -> i] [ i ->
+    let wa item i weights-attitude
+    let ws item i weights-social-norm
+    let social-norm (item i num-treatment-each-type - item i num-non-treatment-each-type) / item i num-each-type
     ask people with [agent-type = i][
-      set next-decision next-decision - 1
-      if next-decision <= 0
-      [
-
-        set num-decisions-each-type replace-item i num-decisions-each-type (item i num-decisions-each-type + 1)
-        let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
-        let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_hc_er * have-caregiver
-        let efficacy_er w_inc_er * income + w_edu_er * education + w_trans_er * [trans_num] of nyCD borocd-id
-        let intension_er wa_er * attitude_er + ws_er * social-norm_er * motivation_er + we_er * efficacy_er
-
-        let attitude_off-cl  w_wfwt_off-cl * want-find-way-to + w_fc_off-cl * feel-cheerful - w_fb_off-cl * feel-bored + w_ffol_off-cl * feel-full-of-life - w_fu_off-cl * feel-upset
-        let motivation_off-cl w_keo_off-cl * know-each-other + w_wheo_off-cl * willing-help-each-other + w_cbt_off-cl * can-be-trusted - w_sd_off-cl * self-determin + w_hc_off-cl * have-caregiver
-        let efficacy_off-cl w_inc_off-cl * income + w_edu_off-cl * education + w_trans_off-cl * [trans_num] of nyCD borocd-id
-        let intension_off-cl wa_off-cl * attitude_off-cl + ws_off-cl * social-norm_off-cl * motivation_off-cl + we_off-cl * efficacy_off-cl
-
-        let attitude_stay  w_wfwt_stay * want-find-way-to + w_fc_stay * feel-cheerful - w_fb_stay * feel-bored + w_ffol_stay * feel-full-of-life - w_fu_stay * feel-upset
-        let motivation_stay w_keo_stay * know-each-other + w_wheo_stay * willing-help-each-other + w_cbt_stay * can-be-trusted - w_sd_stay * self-determin + w_hc_stay * have-caregiver
-        let efficacy_stay w_inc_stay * income + w_edu_stay * education + w_trans_stay * [trans_num] of nyCD borocd-id
-        let intension_stay wa_stay * attitude_stay + ws_stay * social-norm_stay * motivation_stay + we_stay * efficacy_stay
-
-        let max-intension max (list intension_er intension_off-cl intension_stay wa_stay)
-
-        ifelse max-intension = intension_stay
-        [
-          set choice 0
-          set state 13
-          set num-stay-each-type replace-item i num-stay-each-type (item i num-stay-each-type + 1)
-        ]
-        [
-          ifelse max-intension = intension_er
-          [
-            set num-er-each-type replace-item i num-er-each-type (item i num-er-each-type + 1)
-            set choice 1
-            let rand random 100
-            if rand < prob-hosp-after-er
-            [hospitalize]
-          ]
-          [
-            set num-off-cl-each-type replace-item i num-stay-each-type (item i num-off-cl-each-type + 1)
-            set choice 2
-            let rand random 100
-            if rand < prob-hosp-after-office-clinic
-            [hospitalize]
-          ]
-        ]
-        set next-decision random 7
+      let attitude  (want-find-way-to + feel-cheerful - feel-bored + feel-full-of-life - feel-upset) / 9
+      let motivation (know-each-other + willing-help-each-other + can-be-trusted - self-determin) / 4 + (random 2 - 0.5) * have-caregiver
+      let intension wa * attitude + ws * social-norm * motivation
+      ifelse intension > 0
+      [ set get-treatment 1
+        choose-facility
+      ]
+      [ set get-treatment 0
+        set state 13
       ]
     ]
   ]
 end
 
-to hospitalize
+to choose-facility
+  let EM wemc * (item 0 EM-cost-edu-transreq-effect) * income  + wemed * (item 1 EM-cost-edu-transreq-effect) * education + wemt * (item 2 EM-cost-edu-transreq-effect) * ([trans_num] of nyCD boroCD-id) + wemef * (item 3 EM-cost-edu-transreq-effect) * severity + wemf * 5
+  let ER werc * (item 0 EM-cost-edu-transreq-effect) * income  + wered * (item 1 EM-cost-edu-transreq-effect) * education + wert * (item 2 EM-cost-edu-transreq-effect) * ([trans_num] of nyCD boroCD-id) + weref * (item 3 EM-cost-edu-transreq-effect) * severity + werf * 5
+  let Hosp whspc * (item 0 EM-cost-edu-transreq-effect) * income  + whsped * (item 1 EM-cost-edu-transreq-effect) * education + whspt * (item 2 EM-cost-edu-transreq-effect) * ([trans_num] of nyCD boroCD-id) + whspef * (item 3 EM-cost-edu-transreq-effect) * severity + whspf * 5
+  let SNF wsnfc * (item 0 EM-cost-edu-transreq-effect) * income  + wsnfed * (item 1 EM-cost-edu-transreq-effect) * education + wsnft * (item 2 EM-cost-edu-transreq-effect) * ([trans_num] of nyCD boroCD-id) + wsnfef * (item 3 EM-cost-edu-transreq-effect) * severity + wsnff * 5
+  let Homecare whcc * (item 0 EM-cost-edu-transreq-effect) * income  + whced * (item 1 EM-cost-edu-transreq-effect) * education + whct * (item 2 EM-cost-edu-transreq-effect) * ([trans_num] of nyCD boroCD-id) + whcef * (item 3 EM-cost-edu-transreq-effect) * severity + whcf * 5
+  let eval (list EM ER Hosp SNF Homecare)
+  let max-eval max eval
+  set chosen-facility position max-eval eval
 end
 
 to update-var
-  foreach n-values 16 [i -> i] [ i ->
-;    set num-stay-each-type replace-item i num-stay-each-type count people with [agent-type = i and choice = 0]
-;    set num-er-each-type replace-item i num-er-each-type count people with [agent-type = i and choice = 1]
-;    set num-off-cl-each-type replace-item i num-off-cl-each-type count people with [agent-type = i and choice = 2]
-
-
+  foreach n-values 8 [i -> i] [ i ->
+    set num-treatment-each-type replace-item i num-treatment-each-type count people with [agent-type = i and get-treatment = 1]
+    set num-non-treatment-each-type replace-item i num-non-treatment-each-type (item i num-each-type - item i num-treatment-each-type)
   ]
 end
 
@@ -639,6 +571,182 @@ INPUTBOX
 174
 208
 num-agents
+1000.0
+1
+0
+Number
+
+INPUTBOX
+-1
+214
+49
+274
+wa0
+0.0
+1
+0
+Number
+
+INPUTBOX
+57
+214
+107
+274
+ws0
+0.0
+1
+0
+Number
+
+INPUTBOX
+-1
+276
+49
+336
+wa1
+0.0
+1
+0
+Number
+
+INPUTBOX
+57
+276
+107
+336
+ws1
+0.0
+1
+0
+Number
+
+INPUTBOX
+-1
+338
+49
+398
+wa2
+0.0
+1
+0
+Number
+
+INPUTBOX
+56
+338
+106
+398
+ws2
+0.0
+1
+0
+Number
+
+INPUTBOX
+-1
+401
+49
+461
+wa3
+0.0
+1
+0
+Number
+
+INPUTBOX
+56
+401
+106
+461
+ws3
+0.0
+1
+0
+Number
+
+INPUTBOX
+-1
+463
+49
+523
+wa4
+0.0
+1
+0
+Number
+
+INPUTBOX
+56
+463
+106
+523
+ws4
+0.0
+1
+0
+Number
+
+INPUTBOX
+-1
+524
+49
+584
+wa5
+0.0
+1
+0
+Number
+
+INPUTBOX
+55
+524
+105
+584
+ws5
+0.0
+1
+0
+Number
+
+INPUTBOX
+-2
+586
+48
+646
+wa6
+0.0
+1
+0
+Number
+
+INPUTBOX
+55
+587
+105
+647
+ws6
+0.0
+1
+0
+Number
+
+INPUTBOX
+-2
+648
+48
+708
+wa7
+0.0
+1
+0
+Number
+
+INPUTBOX
+56
+649
+106
+709
+ws7
 0.0
 1
 0
@@ -704,551 +812,276 @@ NIL
 NIL
 1
 
-SWITCH
-20
+INPUTBOX
+120
 214
-204
-247
-social-influence-decay?
-social-influence-decay?
-1
-1
--1000
-
-INPUTBOX
-20
-251
-109
-311
-decay-factor
+170
+274
+wemc
 0.0
 1
 0
 Number
 
 INPUTBOX
-11
-836
-166
-896
-w_wfwt_er
+119
+335
+169
+395
+werc
 0.0
 1
 0
 Number
 
 INPUTBOX
-167
-836
-322
-896
-w_fc_er
+119
+459
+169
+519
+whspc
 0.0
 1
 0
 Number
 
 INPUTBOX
+120
+583
+170
+643
+wsnfc
+0.0
+1
+0
+Number
+
+INPUTBOX
+119
+706
+169
+766
+whcc
+0.0
+1
+0
+Number
+
+INPUTBOX
+171
+214
+221
+274
+wemed
+0.0
+1
+0
+Number
+
+INPUTBOX
+223
+213
+273
+273
+wemt
+0.0
+1
+0
+Number
+
+INPUTBOX
+274
+213
+324
+273
+wemf
+0.0
+1
+0
+Number
+
+INPUTBOX
+120
+275
+170
+335
+wemef
+0.0
+1
+0
+Number
+
+INPUTBOX
+170
+335
+220
+395
+wered
+0.0
+1
+0
+Number
+
+INPUTBOX
+222
+335
+272
+395
+wert
+0.0
+1
+0
+Number
+
+INPUTBOX
+274
+335
+324
+395
+werf
+0.0
+1
+0
+Number
+
+INPUTBOX
+119
+396
+169
+456
+weref
+0.0
+1
+0
+Number
+
+INPUTBOX
+171
+460
+221
+520
+whsped
+0.0
+1
+0
+Number
+
+INPUTBOX
+222
+459
+272
+519
+whspt
+0.0
+1
+0
+Number
+
+INPUTBOX
+273
+460
 323
-836
-478
-896
-w_fb_er
+520
+whspf
 0.0
 1
 0
 Number
 
 INPUTBOX
-479
-836
-634
-896
-w_ffol_er
+120
+521
+170
+581
+whspef
 0.0
 1
 0
 Number
 
 INPUTBOX
-635
-836
-790
-896
-w_fu_er
+171
+582
+221
+642
+wsnfed
 0.0
 1
 0
 Number
 
 INPUTBOX
-810
-836
-965
-896
-w_keo_er
+222
+582
+272
+642
+wsnft
 0.0
 1
 0
 Number
 
 INPUTBOX
-966
-836
-1121
-896
-w_wheo_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1122
-836
-1277
-896
-w_cbt_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1278
-836
-1433
-896
-w_sd_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1434
-836
-1589
-896
-w_hc_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1606
-836
-1761
-896
-w_inc_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1762
-836
-1917
-896
-w_edu_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-1918
-836
-2073
-896
-w_trans_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-836
-2246
-896
-wa_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-2247
-836
-2402
-896
-ws_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-2404
-836
-2559
-896
-we_er
-0.0
-1
-0
-Number
-
-INPUTBOX
-11
-926
-166
-986
-w_wfwt_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-167
-926
-322
-986
-w_fc_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
+273
+582
 323
-926
-478
-986
-w_fb_off-cl
+642
+wsnff
 0.0
 1
 0
 Number
 
 INPUTBOX
-479
-926
-634
-986
-w_ffol_off-cl
+119
+644
+169
+704
+wsnfef
 0.0
 1
 0
 Number
 
 INPUTBOX
-635
-926
-790
-986
-w_fu_off-cl
+171
+706
+221
+766
+whced
 0.0
 1
 0
 Number
 
 INPUTBOX
-810
-926
-965
-986
-w_keo_off-cl
+222
+706
+272
+766
+whct
 0.0
 1
 0
 Number
 
 INPUTBOX
-966
-926
-1121
-986
-w_wheo_off-cl
+274
+706
+324
+766
+whcf
 0.0
 1
 0
 Number
 
 INPUTBOX
-1122
-926
-1277
-986
-w_cbt_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-1278
-926
-1433
-986
-w_sd_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-1434
-926
-1589
-986
-w_hc_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-1606
-926
-1761
-986
-w_inc_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-1762
-926
-1917
-986
-w_edu_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-1918
-926
-2073
-986
-w_trans_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-926
-2246
-986
-wa_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-2247
-926
-2402
-986
-ws_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-2404
-926
-2559
-986
-we_off-cl
-0.0
-1
-0
-Number
-
-INPUTBOX
-11
-1016
-166
-1076
-w_wfwt_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-167
-1016
-322
-1076
-w_fc_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-323
-1016
-478
-1076
-w_fb_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-479
-1016
-634
-1076
-w_ffol_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-635
-1016
-790
-1076
-w_fu_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-810
-1016
-965
-1076
-w_keo_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-966
-1016
-1121
-1076
-w_wheo_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1122
-1016
-1277
-1076
-w_cbt_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1278
-1016
-1433
-1076
-w_sd_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1434
-1016
-1589
-1076
-w_hc_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1606
-1016
-1761
-1076
-w_inc_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1762
-1016
-1917
-1076
-w_edu_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-1918
-1016
-2073
-1076
-w_trans_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2091
-1016
-2246
-1076
-wa_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2247
-1016
-2402
-1076
-ws_stay
-0.0
-1
-0
-Number
-
-INPUTBOX
-2404
-1016
-2559
-1076
-we_stay
+118
+767
+168
+827
+whcef
 0.0
 1
 0

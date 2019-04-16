@@ -1,0 +1,1104 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20191.19.0213.2333                               -->
+<workbook original-version='18.1' source-build='2019.1.0 (20191.19.0213.2333)' source-platform='win' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <SheetIdentifierTracking />
+    <WindowsPersistSimpleIdentifiers />
+  </document-format-change-manifest>
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+  <datasources>
+    <datasource caption='CB_bucket_prop_year_2009_nocount' inline='true' name='federated.1m96s9o1qqselo1bty16x1x3mj18' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='CB_bucket_prop_year_2009_nocount' name='textscan.154m3ck1qt3ae212hh18u0qh65s6'>
+            <connection class='textscan' directory='F:/VNSNY/netlogo model/data' filename='CB_bucket_prop_year_2009_nocount.csv' password='' server='' />
+          </named-connection>
+        </named-connections>
+        <relation connection='textscan.154m3ck1qt3ae212hh18u0qh65s6' name='CB_bucket_prop_year_2009_nocount.csv' table='[CB_bucket_prop_year_2009_nocount#csv]' type='table'>
+          <columns character-set='UTF-8' header='yes' locale='en_US' separator=','>
+            <column datatype='integer' name='F1' ordinal='0' />
+            <column datatype='integer' name='CBCD' ordinal='1' />
+            <column datatype='integer' name='dual_elig' ordinal='2' />
+            <column datatype='integer' name='white' ordinal='3' />
+            <column datatype='integer' name='male' ordinal='4' />
+            <column datatype='integer' name='agecat' ordinal='5' />
+            <column datatype='integer' name='grand_total' ordinal='6' />
+            <column datatype='real' name='count_over_CB_total' ordinal='7' />
+            <column datatype='real' name='CB_total_over_grand_total' ordinal='8' />
+            <column datatype='integer' name='year' ordinal='9' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='character-set'>&quot;UTF-8&quot;</attribute>
+              <attribute datatype='string' name='collation'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='field-delimiter'>&quot;,&quot;</attribute>
+              <attribute datatype='string' name='header-row'>&quot;true&quot;</attribute>
+              <attribute datatype='string' name='locale'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='single-char'>&quot;&quot;</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>F1</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[F1]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>F1</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CBCD</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[CBCD]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>CBCD</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dual_elig</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[dual_elig]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>dual_elig</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>white</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[white]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>white</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>male</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[male]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>male</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>agecat</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[agecat]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>agecat</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>grand_total</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>grand_total</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>count_over_CB_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[count_over_CB_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>count_over_CB_total</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CB_total_over_grand_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[CB_total_over_grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>CB_total_over_grand_total</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>year</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[year]</local-name>
+            <parent-name>[CB_bucket_prop_year_2009_nocount.csv]</parent-name>
+            <remote-alias>year</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column datatype='integer' name='[Number of Records]' role='measure' type='quantitative' user:auto-column='numrec'>
+        <calculation class='tableau' formula='1' />
+      </column>
+      <column aggregation='Sum' caption='Agecat' datatype='integer' name='[agecat]' role='dimension' type='ordinal' />
+      <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Dual Elig' datatype='integer' name='[dual_elig]' role='dimension' type='ordinal' />
+      <column caption='Grand Total' datatype='integer' name='[grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Male' datatype='integer' name='[male]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='White' datatype='integer' name='[white]' role='dimension' type='ordinal' />
+      <column caption='Year' datatype='integer' name='[year]' role='dimension' type='quantitative' />
+      <layout dim-ordering='alphabetic' dim-percentage='0.529255' measure-ordering='alphabetic' measure-percentage='0.470745' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+    </datasource>
+    <datasource caption='CB_bucket_prop_year_2008_nocount' inline='true' name='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='CB_bucket_prop_year_2008_nocount' name='textscan.1pb6fl81u82sez134butg0en70ka'>
+            <connection class='textscan' directory='F:/VNSNY/netlogo model/data' filename='CB_bucket_prop_year_2008_nocount.csv' password='' server='' />
+          </named-connection>
+        </named-connections>
+        <relation connection='textscan.1pb6fl81u82sez134butg0en70ka' name='CB_bucket_prop_year_2008_nocount.csv' table='[CB_bucket_prop_year_2008_nocount#csv]' type='table'>
+          <columns character-set='UTF-8' header='yes' locale='en_US' separator=','>
+            <column datatype='integer' name='F1' ordinal='0' />
+            <column datatype='integer' name='CBCD' ordinal='1' />
+            <column datatype='integer' name='dual_elig' ordinal='2' />
+            <column datatype='integer' name='white' ordinal='3' />
+            <column datatype='integer' name='male' ordinal='4' />
+            <column datatype='integer' name='agecat' ordinal='5' />
+            <column datatype='integer' name='grand_total' ordinal='6' />
+            <column datatype='real' name='count_over_CB_total' ordinal='7' />
+            <column datatype='real' name='CB_total_over_grand_total' ordinal='8' />
+            <column datatype='integer' name='year' ordinal='9' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='character-set'>&quot;UTF-8&quot;</attribute>
+              <attribute datatype='string' name='collation'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='field-delimiter'>&quot;,&quot;</attribute>
+              <attribute datatype='string' name='header-row'>&quot;true&quot;</attribute>
+              <attribute datatype='string' name='locale'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='single-char'>&quot;&quot;</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>F1</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[F1]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>F1</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CBCD</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[CBCD]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>CBCD</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dual_elig</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[dual_elig]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>dual_elig</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>white</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[white]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>white</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>male</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[male]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>male</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>agecat</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[agecat]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>agecat</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>grand_total</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>grand_total</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>count_over_CB_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[count_over_CB_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>count_over_CB_total</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CB_total_over_grand_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[CB_total_over_grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>CB_total_over_grand_total</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>year</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[year]</local-name>
+            <parent-name>[CB_bucket_prop_year_2008_nocount.csv]</parent-name>
+            <remote-alias>year</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column datatype='integer' name='[Number of Records]' role='measure' type='quantitative' user:auto-column='numrec'>
+        <calculation class='tableau' formula='1' />
+      </column>
+      <column aggregation='Sum' caption='Agecat' datatype='integer' name='[agecat]' role='dimension' type='ordinal' />
+      <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Dual Elig' datatype='integer' name='[dual_elig]' role='dimension' type='ordinal' />
+      <column caption='Grand Total' datatype='integer' name='[grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Male' datatype='integer' name='[male]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='White' datatype='integer' name='[white]' role='dimension' type='ordinal' />
+      <column caption='Year' datatype='integer' name='[year]' role='dimension' type='quantitative' />
+      <layout dim-ordering='alphabetic' dim-percentage='0.529255' measure-ordering='alphabetic' measure-percentage='0.470745' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+    </datasource>
+    <datasource caption='CB_bucket_prop_year_2010_nocount' inline='true' name='federated.1w7ky4318f6k6e1d8n0n40l528qk' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='CB_bucket_prop_year_2010_nocount' name='textscan.12ham5d1blp7bi1fak5sr1xasnd2'>
+            <connection class='textscan' directory='F:/VNSNY/netlogo model/data' filename='CB_bucket_prop_year_2010_nocount.csv' password='' server='' />
+          </named-connection>
+        </named-connections>
+        <relation connection='textscan.12ham5d1blp7bi1fak5sr1xasnd2' name='CB_bucket_prop_year_2010_nocount.csv' table='[CB_bucket_prop_year_2010_nocount#csv]' type='table'>
+          <columns character-set='UTF-8' header='yes' locale='en_US' separator=','>
+            <column datatype='integer' name='F1' ordinal='0' />
+            <column datatype='integer' name='CBCD' ordinal='1' />
+            <column datatype='integer' name='dual_elig' ordinal='2' />
+            <column datatype='integer' name='white' ordinal='3' />
+            <column datatype='integer' name='male' ordinal='4' />
+            <column datatype='integer' name='agecat' ordinal='5' />
+            <column datatype='integer' name='grand_total' ordinal='6' />
+            <column datatype='real' name='count_over_CB_total' ordinal='7' />
+            <column datatype='real' name='CB_total_over_grand_total' ordinal='8' />
+            <column datatype='integer' name='year' ordinal='9' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='character-set'>&quot;UTF-8&quot;</attribute>
+              <attribute datatype='string' name='collation'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='field-delimiter'>&quot;,&quot;</attribute>
+              <attribute datatype='string' name='header-row'>&quot;true&quot;</attribute>
+              <attribute datatype='string' name='locale'>&quot;en_US&quot;</attribute>
+              <attribute datatype='string' name='single-char'>&quot;&quot;</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>F1</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[F1]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>F1</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CBCD</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[CBCD]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>CBCD</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dual_elig</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[dual_elig]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>dual_elig</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>white</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[white]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>white</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>male</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[male]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>male</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>agecat</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[agecat]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>agecat</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>grand_total</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>grand_total</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>count_over_CB_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[count_over_CB_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>count_over_CB_total</remote-alias>
+            <ordinal>7</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>CB_total_over_grand_total</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[CB_total_over_grand_total]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>CB_total_over_grand_total</remote-alias>
+            <ordinal>8</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>year</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[year]</local-name>
+            <parent-name>[CB_bucket_prop_year_2010_nocount.csv]</parent-name>
+            <remote-alias>year</remote-alias>
+            <ordinal>9</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column caption='count over CB totoal_09' datatype='real' name='[Calculation_248260975500013570]' role='measure' type='quantitative'>
+        <calculation class='tableau' formula='SUM([federated.1m96s9o1qqselo1bty16x1x3mj18].[count_over_CB_total])' />
+      </column>
+      <column caption='count over CB totoal_08' datatype='real' name='[Calculation_248260975500713987]' role='measure' type='quantitative'>
+        <calculation class='tableau' formula='SUM([federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[count_over_CB_total])' />
+      </column>
+      <column datatype='integer' name='[Number of Records]' role='measure' type='quantitative' user:auto-column='numrec'>
+        <calculation class='tableau' formula='1' />
+      </column>
+      <column aggregation='Sum' caption='Agecat' datatype='integer' name='[agecat]' role='dimension' type='ordinal' />
+      <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Dual Elig' datatype='integer' name='[dual_elig]' role='dimension' type='ordinal' />
+      <column caption='Grand Total' datatype='integer' name='[grand_total]' role='measure' type='quantitative' />
+      <column aggregation='Sum' caption='Male' datatype='integer' name='[male]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='White' datatype='integer' name='[white]' role='dimension' type='ordinal' />
+      <column caption='Year' datatype='integer' name='[year]' role='dimension' type='quantitative' />
+      <layout dim-ordering='alphabetic' dim-percentage='0.5' measure-ordering='alphabetic' measure-percentage='0.5' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+      </semantic-values>
+      <datasource-dependencies datasource='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6'>
+        <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+      </datasource-dependencies>
+      <datasource-dependencies datasource='federated.1m96s9o1qqselo1bty16x1x3mj18'>
+        <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+      </datasource-dependencies>
+    </datasource>
+  </datasources>
+  <datasource-relationships>
+    <datasource-dependencies datasource='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6'>
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column-instance column='[CBCD]' derivation='None' name='[none:CBCD:ok]' pivot='key' type='ordinal' />
+      <column-instance column='[Calculation_248260975498137600]' derivation='None' name='[none:Calculation_248260975498137600:ok]' pivot='key' type='ordinal' />
+    </datasource-dependencies>
+    <datasource-dependencies datasource='federated.1m96s9o1qqselo1bty16x1x3mj18'>
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column-instance column='[CBCD]' derivation='None' name='[none:CBCD:ok]' pivot='key' type='ordinal' />
+      <column-instance column='[Calculation_248260975498137600]' derivation='None' name='[none:Calculation_248260975498137600:ok]' pivot='key' type='ordinal' />
+    </datasource-dependencies>
+    <datasource-dependencies datasource='federated.1w7ky4318f6k6e1d8n0n40l528qk'>
+      <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+      <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+      </column>
+      <column-instance column='[CBCD]' derivation='None' name='[none:CBCD:ok]' pivot='key' type='ordinal' />
+      <column-instance column='[Calculation_248260975498137600]' derivation='None' name='[none:Calculation_248260975498137600:ok]' pivot='key' type='ordinal' />
+    </datasource-dependencies>
+    <datasource-relationship source='federated.1w7ky4318f6k6e1d8n0n40l528qk' target='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6'>
+      <column-mapping>
+        <map key='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:CBCD:ok]' value='[federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[none:CBCD:ok]' />
+        <map key='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:Calculation_248260975498137600:ok]' value='[federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[none:Calculation_248260975498137600:ok]' />
+      </column-mapping>
+    </datasource-relationship>
+    <datasource-relationship source='federated.1w7ky4318f6k6e1d8n0n40l528qk' target='federated.1m96s9o1qqselo1bty16x1x3mj18'>
+      <column-mapping>
+        <map key='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:CBCD:ok]' value='[federated.1m96s9o1qqselo1bty16x1x3mj18].[none:CBCD:ok]' />
+        <map key='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:Calculation_248260975498137600:ok]' value='[federated.1m96s9o1qqselo1bty16x1x3mj18].[none:Calculation_248260975498137600:ok]' />
+      </column-mapping>
+    </datasource-relationship>
+  </datasource-relationships>
+  <worksheets>
+    <worksheet name='change of each CD over whole NYC'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='CB_bucket_prop_year_2008_nocount' name='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6' />
+            <datasource caption='CB_bucket_prop_year_2009_nocount' name='federated.1m96s9o1qqselo1bty16x1x3mj18' />
+            <datasource caption='CB_bucket_prop_year_2010_nocount' name='federated.1w7ky4318f6k6e1d8n0n40l528qk' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6'>
+            <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+            <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+            <column-instance column='[CB_total_over_grand_total]' derivation='Attribute' name='[attr:CB_total_over_grand_total:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[CBCD]' derivation='None' name='[none:CBCD:ok]' pivot='key' type='ordinal' />
+          </datasource-dependencies>
+          <datasource-dependencies datasource='federated.1m96s9o1qqselo1bty16x1x3mj18'>
+            <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+            <column-instance column='[CB_total_over_grand_total]' derivation='Attribute' name='[attr:CB_total_over_grand_total:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <datasource-dependencies datasource='federated.1w7ky4318f6k6e1d8n0n40l528qk'>
+            <column caption='CB total over grand total' datatype='real' name='[CB_total_over_grand_total]' role='measure' type='quantitative' />
+            <column-instance column='[CB_total_over_grand_total]' derivation='Attribute' name='[attr:CB_total_over_grand_total:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[attr:CB_total_over_grand_total:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='2' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.1m96s9o1qqselo1bty16x1x3mj18].[attr:CB_total_over_grand_total:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='3' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[attr:CB_total_over_grand_total:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows>([federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[attr:CB_total_over_grand_total:qk] + ([federated.1m96s9o1qqselo1bty16x1x3mj18].[attr:CB_total_over_grand_total:qk] + [federated.1w7ky4318f6k6e1d8n0n40l528qk].[attr:CB_total_over_grand_total:qk]))</rows>
+        <cols>[federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[none:CBCD:ok]</cols>
+      </table>
+      <simple-id uuid='{FC96CAEA-4944-4523-85E7-2258BA56B40F}' />
+    </worksheet>
+    <worksheet name='change of type ratio in each CD'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='CB_bucket_prop_year_2010_nocount' name='federated.1w7ky4318f6k6e1d8n0n40l528qk' />
+            <datasource caption='CB_bucket_prop_year_2009_nocount' name='federated.1m96s9o1qqselo1bty16x1x3mj18' />
+            <datasource caption='CB_bucket_prop_year_2008_nocount' name='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0q1hm3o0kg8zop1gl0o1p15d1xp6'>
+            <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <datasource-dependencies datasource='federated.1m96s9o1qqselo1bty16x1x3mj18'>
+            <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <datasource-dependencies datasource='federated.1w7ky4318f6k6e1d8n0n40l528qk'>
+            <column aggregation='Sum' caption='Cbcd' datatype='integer' name='[CBCD]' role='dimension' type='ordinal' />
+            <column aggregation='Sum' caption='type' datatype='integer' name='[Calculation_248260975498137600]' role='dimension' type='ordinal'>
+              <calculation class='tableau' formula='[dual_elig]*8 + [white]*4 + [male]*2 + [agecat]' />
+            </column>
+            <column caption='count over CB totoal_09' datatype='real' name='[Calculation_248260975500013570]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM([federated.1m96s9o1qqselo1bty16x1x3mj18].[count_over_CB_total])' />
+            </column>
+            <column caption='count over CB totoal_08' datatype='real' name='[Calculation_248260975500713987]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM([federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[count_over_CB_total])' />
+            </column>
+            <column aggregation='Sum' caption='Agecat' datatype='integer' name='[agecat]' role='dimension' type='ordinal' />
+            <column-instance column='[count_over_CB_total]' derivation='Attribute' name='[attr:count_over_CB_total:qk]' pivot='key' type='quantitative' />
+            <column caption='count over CB total' datatype='real' name='[count_over_CB_total]' role='measure' type='quantitative' />
+            <column aggregation='Sum' caption='Dual Elig' datatype='integer' name='[dual_elig]' role='dimension' type='ordinal' />
+            <column aggregation='Sum' caption='Male' datatype='integer' name='[male]' role='dimension' type='ordinal' />
+            <column-instance column='[CBCD]' derivation='None' name='[none:CBCD:ok]' pivot='key' type='ordinal' />
+            <column-instance column='[Calculation_248260975498137600]' derivation='None' name='[none:Calculation_248260975498137600:ok]' pivot='key' type='ordinal' />
+            <column-instance column='[Calculation_248260975500013570]' derivation='User' name='[usr:Calculation_248260975500013570:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_248260975500713987]' derivation='User' name='[usr:Calculation_248260975500713987:qk]' pivot='key' type='quantitative' />
+            <column aggregation='Sum' caption='White' datatype='integer' name='[white]' role='dimension' type='ordinal' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='2' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[attr:count_over_CB_total:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='3' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[usr:Calculation_248260975500013570:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='4' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.1w7ky4318f6k6e1d8n0n40l528qk].[usr:Calculation_248260975500713987:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows>([federated.1w7ky4318f6k6e1d8n0n40l528qk].[attr:count_over_CB_total:qk] + ([federated.1w7ky4318f6k6e1d8n0n40l528qk].[usr:Calculation_248260975500013570:qk] + [federated.1w7ky4318f6k6e1d8n0n40l528qk].[usr:Calculation_248260975500713987:qk]))</rows>
+        <cols>([federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:CBCD:ok] / [federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:Calculation_248260975498137600:ok])</cols>
+      </table>
+      <simple-id uuid='{AD0CB0FD-FBBD-4568-BE5F-B00B3D5DCD7E}' />
+    </worksheet>
+  </worksheets>
+  <windows source-height='72'>
+    <window class='worksheet' name='change of type ratio in each CD'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <viewpoint>
+        <highlight>
+          <color-one-way>
+            <field>[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:CBCD:ok]</field>
+            <field>[federated.1w7ky4318f6k6e1d8n0n40l528qk].[none:Calculation_248260975498137600:ok]</field>
+          </color-one-way>
+        </highlight>
+      </viewpoint>
+      <simple-id uuid='{FB9879FC-E997-4314-B235-62793FFBAE2C}' />
+    </window>
+    <window class='worksheet' maximized='true' name='change of each CD over whole NYC'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <viewpoint>
+        <highlight>
+          <color-one-way>
+            <field>[federated.0q1hm3o0kg8zop1gl0o1p15d1xp6].[none:CBCD:ok]</field>
+          </color-one-way>
+        </highlight>
+      </viewpoint>
+      <simple-id uuid='{02F99733-E644-414A-A41E-E32E87EA8B45}' />
+    </window>
+  </windows>
+  <thumbnails>
+    <thumbnail height='192' name='change of each CD over whole NYC' width='192'>
+      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
+      3SgUJfx/ZEul5/ymhdsAAAAASUVORK5CYII=
+    </thumbnail>
+    <thumbnail height='192' name='change of type ratio in each CD' width='192'>
+      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
+    </thumbnail>
+  </thumbnails>
+</workbook>
