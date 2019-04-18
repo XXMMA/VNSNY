@@ -4,7 +4,6 @@ extensions [gis view2.5d csv table]
 globals [
   ;date
   year
-  start-year
   day
   ;var used for environment display
   mouse-was-down?
@@ -22,26 +21,16 @@ globals [
   pop-ratio-each-type ; key : type value : ratio
   pop-ratio-CD-in-each-type ; key type  value : [ [CDs] [ratios] ]
   nhats-ratio-each-type ; key : [type attrname] value : [[value1 value2 ....] [ratio1 ratio2]]
-  weights ; key : [type ER/Office] value : [attr-weight social-weight effic-weight]
+  weights ; key : [type "ER"/"Office"] value : [attr-weight social-weight effic-weight]
   attr-names
   normalize-factor ; key : "attitude"/"social_norm"/"efficacy" value :[factor intercept]
-  intervals ; key: type
-  last-of-stay ; key: type
-  num-each-type
-  num-er-each-type
-  num-off-cl-each-type
-  num-stay-each-type
-  num-decisions-each-type
-  max-dens
-  weights-attitude
-  weights-social-norm
-  EM-cost-edu-transreq-effect
-  ER-cost-edu-transreq-effect
-  Hospital-cost-edu-transreq-effect
-  SNF-cost-edu-transreq-effect
-  Homecare-cost-edu-transreq-effect
-  prob-hosp-after-er
-  prob-hosp-after-office-clinic
+  intervals ;
+  last-of-stay ; key: type value: table: key : stay_days value : ratio
+  num-each-type ; key:type value: num of each type
+  prob-hosp-after-decision ; key: type value: [ER-ratio Office-ratio]
+  ;stats
+  each-decision-each-type ; key: type value: [ER-decisions-num-by-each-type Office-decisions-num-by-each-type]
+  total-decisions-each-type ; key: type value: num-of-decisions-by-each-type
 ]
 
 breed[nyCDs nyCD]
@@ -81,10 +70,11 @@ people-own[
   los
   state
   get-treatment
-  choice ;0: stay at home, 1: er, 2: office-clinics
+  in-hosp
   severity
-  choice-record ; [stay-at-home er office-clinics]
+  decision-record ; [er office-clinics]
   hospitalization ; num of hospitalization
+  days-in-hosp
   next-decision
 ]
 
@@ -295,9 +285,10 @@ to generate-people
   let type-list table:keys pop-ratio-each-type
   let type-ratio-list table:values pop-ratio-each-type
   let partition-list partition-under-prob num-agents type-ratio-list
-  set num-each-type partition-list
+  set num-each-type table:make
   (foreach type-list partition-list [ [this-type this-type-partition] ->
     ; pop-ratio-CD-in-each-type => key type  value: [ [CDs] [ratios] ]
+    table:put num-each-type this-type this-type-partition
     let CD-list item 0 table:get pop-ratio-CD-in-each-type this-type
     let CD-ratio-list item 1 table:get pop-ratio-CD-in-each-type this-type
     let this-partition-list partition-under-prob this-type-partition CD-ratio-list
@@ -351,21 +342,21 @@ to assign-attr-to-people
         let the-choice random-choice-under-prob (item 0 table:get attr-dict this-attr) (item 1 table:get attr-dict this-attr)
         run (word "set " this-attr " " the-choice)
       ]
+      set in-hosp false
     ]
   ]
 
 end
 
 ;-----------------------------------------------------------------Setup global variables------------------------------------------------------------------------
+;---------------------------------------------------------------------------------------------------------------------------------------------------------------
 to setup-var
   load-normalize-factor
   load-weights
-  set max-dens max [pop_dens] of nyCDs
-  set heatmap-flag false
-  set num-er-each-type n-values 16 [0]
-  set num-off-cl-each-type n-values 16 [0]
-  set num-stay-each-type n-values 16 [0]
-  set num-decisions-each-type n-values 16 [0]
+  load-last-of-stay
+  load-prob-hosp-after-decision
+  setup-global-var
+  setup-stats
 end
 
 to load-normalize-factor ; "attitude" "social_norm" "efficacy"  ****normalized = factor * attitude/social_norm/effficacy + intercept***
@@ -390,75 +381,50 @@ to load-weights
   file-close-all
 end
 
-;--------------------------------------------------------------------------------------------------------------------------------------------------------------
-;---------------------------------------------------------------Decision making--------------------------------------------------------------------------------
-;--------------------------------------------------------------------------------------------------------------------------------------------------------------
-to go
-  make-decision
-  ;update-var
-  tick
-end
-
-to-report gamma-distribution [alpha beta]
-  let dice random-float 1
-
-end
-to make-decision
-  foreach n-values 16 [i -> i] [ i ->
-    let social-norm_er item i num-er-each-type  / item i num-decisions-each-type
-    let social-norm_off-cl item i num-off-cl-each-type  / item i num-decisions-each-type
-    let social-norm_stay item i num-stay-each-type  / item i num-decisions-each-type
-    ask people with [agent-type = i][
-      set next-decision next-decision - 1
-      if next-decision <= 0
-      [
-        set num-decisions-each-type replace-item i num-decisions-each-type (item i num-decisions-each-type + 1)
-        let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
-        let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_atc_er * adjust-to-change - w_noto_er * no-one-talk-to
-        let efficacy_er w_inc_er * income + w_edu_er * education
-        let intention_er wa_er * attitude_er + ws_er * social-norm_er * motivation_er + we_er * efficacy_er
-
-        let attitude_off-cl  w_wfwt_off-cl * want-find-way-to + w_fc_off-cl * feel-cheerful - w_fb_off-cl * feel-bored + w_ffol_off-cl * feel-full-of-life - w_fu_off-cl * feel-upset
-        let motivation_off-cl w_keo_off-cl * know-each-other + w_wheo_off-cl * willing-help-each-other + w_cbt_off-cl * can-be-trusted - w_sd_off-cl * self-determin + w_atc_off-cl * adjust-to-change - w_noto_off-cl * no-one-talk-to
-        let efficacy_off-cl w_inc_off-cl * income + w_edu_off-cl * education
-        let intention_off-cl wa_off-cl * attitude_off-cl + ws_off-cl * social-norm_off-cl * motivation_off-cl + we_off-cl * efficacy_off-cl
-
-        let max-intention max (list intention_er intention_off-cl)
-
-        ifelse max-intention = intention_er
-        [
-          set num-er-each-type replace-item i num-er-each-type (item i num-er-each-type + 1)
-          set choice 1
-          let rand random 100
-          if rand < prob-hosp-after-er
-          [hospitalize]
-        ]
-        [
-          set num-off-cl-each-type replace-item i num-stay-each-type (item i num-off-cl-each-type + 1)
-          set choice 2
-          let rand random 100
-          if rand < prob-hosp-after-office-clinic
-          [hospitalize]
-        ]
-        set next-decision random 7
-      ]
+to load-last-of-stay
+  set last-of-stay table:make
+  file-open "data\\los.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    let day-ratio table:make
+    foreach n-values item 1 row [i -> i] [i ->
+      table:put day-ratio (item (2 + 2 * i) row) (item (2 + 2 * i + 1) row)
     ]
+    table:put last-of-stay (item 0 row) day-ratio
+  ]
+  file-close-all
+end
+
+to load-prob-hosp-after-decision
+  set prob-hosp-after-decision table:make
+  file-open "data\\hosp_prob_after_decision.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put prob-hosp-after-decision item 0 row (list item 1 row item 2 row)
+  ]
+  file-close-all
+end
+
+to setup-global-var
+  set year start-year
+  set day 1
+  set heatmap-flag false
+end
+
+to setup-stats
+  set each-decision-each-type table:make
+  set total-decisions-each-type table:make
+  foreach table:keys pop-ratio-each-type [this-type ->
+    table:put total-decisions-each-type this-type 0
+    table:put each-decision-each-type this-type [0 0]
   ]
 end
 
-to hospitalize
-end
-
-to update-var
-  foreach n-values 16 [i -> i] [ i ->
-;    set num-stay-each-type replace-item i num-stay-each-type count people with [agent-type = i and choice = 0]
-;    set num-er-each-type replace-item i num-er-each-type count people with [agent-type = i and choice = 1]
-;    set num-off-cl-each-type replace-item i num-off-cl-each-type count people with [agent-type = i and choice = 2]
-
-
-  ]
-end
-
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+;----------------------------------------------------------------Display map-----------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to overview-one-CD
   let mouse-is-down? mouse-down?
   if mouse-clicked? [
@@ -587,6 +553,111 @@ end
 
 to-report view-name
   report "info map"
+end
+
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+;---------------------------------------------------------------Model Pipeline---------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+to go
+  make-decision
+  update-global-var
+  tick
+end
+
+;---------------------------------------------------------------Decision making--------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+to make-decision
+  foreach table:keys pop-ratio-each-type [this-type ->
+    let consider-social (table:get total-decisions-each-type this-type) > 0
+    let prob-hosp-after-er item 0 table:get prob-hosp-after-decision this-type
+    let prob-hosp-after-off-cl item 1 table:get prob-hosp-after-decision this-type
+    let social-norm_er 0
+    let social-norm_off-cl 0
+    if consider-social
+    [
+      set social-norm_er (item 0 table:get each-decision-each-type this-type) / (table:get total-decisions-each-type this-type)
+      set social-norm_off-cl (item 1 table:get each-decision-each-type this-type) / (table:get total-decisions-each-type this-type)
+    ]
+    set wa_er item 0 table:get weights (list this-type "ER")
+    set ws_er item 1 table:get weights (list this-type "ER")
+    set we_er item 2 table:get weights (list this-type "ER")
+    set wa_off-cl item 0 table:get weights (list this-type "Office")
+    set ws_off-cl item 1 table:get weights (list this-type "Office")
+    set we_off-cl item 2 table:get weights (list this-type "Office")
+
+    let new-decisions_er 0
+    let new-decisions_off-cl 0
+
+    ask people with [agent-type = this-type][
+      ifelse in-hosp
+      [action-in-hosp]
+      [
+        set next-decision next-decision - 1
+        if next-decision <= 0 [
+          let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
+          let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_atc_er * adjust-to-change - w_noto_er * no-one-talk-to
+          let efficacy_er w_inc_er * income + w_edu_er * education
+          let intention_er wa_er * attitude_er + ws_er * social-norm_er * motivation_er + we_er * efficacy_er
+
+          let attitude_off-cl  w_wfwt_off-cl * want-find-way-to + w_fc_off-cl * feel-cheerful - w_fb_off-cl * feel-bored + w_ffol_off-cl * feel-full-of-life - w_fu_off-cl * feel-upset
+          let motivation_off-cl w_keo_off-cl * know-each-other + w_wheo_off-cl * willing-help-each-other + w_cbt_off-cl * can-be-trusted - w_sd_off-cl * self-determin + w_atc_off-cl * adjust-to-change - w_noto_off-cl * no-one-talk-to
+          let efficacy_off-cl w_inc_off-cl * income + w_edu_off-cl * education
+          let intention_off-cl wa_off-cl * attitude_off-cl + ws_off-cl * social-norm_off-cl * motivation_off-cl + we_off-cl * efficacy_off-cl
+
+          let max-intention max (list intention_er intention_off-cl)
+
+          ifelse max-intention = intention_er
+          [
+            set new-decisions_er new-decisions_er + 1
+            set decision-record replace-item 0 decision-record (item 0 decision-record + 1)
+            let dice random-float 1
+            ifelse dice < prob-hosp-after-er
+            [go-to-hosp]
+            [set next-decision 10]
+          ]
+          [
+            set new-decisions_off-cl new-decisions_off-cl + 1
+            set decision-record replace-item 1 decision-record (item 1 decision-record + 1)
+            let dice random-float 1
+            ifelse dice < prob-hosp-after-off-cl
+            [go-to-hosp]
+            [set next-decision 10]
+          ]
+        ]
+      ]
+    ]
+    update-stats this-type new-decisions_er new-decisions_off-cl
+  ]
+end
+
+to go-to-hosp
+  set in-hosp true
+  set hospitalization hospitalization + 1
+  let potential-los table:get last-of-stay agent-type
+  set los random-choice-under-prob (table:keys potential-los) (table:values potential-los)
+end
+
+to action-in-hosp
+  set days-in-hosp days-in-hosp + 1
+  set los los - 1
+  if los <= 0 [set in-hosp false]
+end
+
+to update-stats [this-type new-decisions_er new-decisions_off-cl]
+  table:put each-decision-each-type this-type (list ((item 0 table:get each-decision-each-type agent-type) + new-decisions_er) ((item 1 table:get each-decision-each-type agent-type) + new-decisions_off-cl))
+  table:put total-decisions-each-type this-type (table:get total-decisions-each-type this-type + new-decisions_er + new-decisions_off-cl)
+end
+
+;------------------------------------------------------------Update global variables---------------------------------------------------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+to update-global-var
+  set day day + 1
+  if day > 365
+  [
+    set day  (day mod 365)
+    set year year + 1
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1180,6 +1251,17 @@ INPUTBOX
 986
 w_noto_off-cl
 1.0
+1
+0
+Number
+
+INPUTBOX
+111
+251
+266
+311
+start-year
+2008.0
 1
 0
 Number
