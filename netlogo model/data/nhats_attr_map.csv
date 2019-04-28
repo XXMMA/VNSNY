@@ -1,0 +1,14 @@
+attr_name,attr_var,nvalues,value_0,map_value_0,value_1,map_value_1,value_2,map_value_2,value_3,map_value_3,value_4,map_value_4
+want-find-way-to,wb1agrwstmt2,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+feel-cheerful,wb1offelche1,5,1.0,5.0,2.0,4.0,3.0,3.0,4.0,2.0,5.0,1.0
+feel-bored,wb1offelche2,5,1.0,5.0,2.0,4.0,3.0,3.0,4.0,2.0,5.0,1.0
+feel-full-of-life,wb1offelche3,5,1.0,5.0,2.0,4.0,3.0,3.0,4.0,2.0,5.0,1.0
+feel-upset,wb1offelche4,5,1.0,5.0,2.0,4.0,3.0,3.0,4.0,2.0,5.0,1.0
+adjust-to-change,wb1agrwstmt3,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+self-determin,wb1agrwstmt1,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+know-each-other,cm1knowwell,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+willing-help-each-other,cm1willnghlp,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+can-be-trusted,cm1peoptrstd,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+no-one-talk-to,fl1noonetalk,2,1.0,2.0,2.0,1.0,,,,,,
+income,ia1totinc,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
+education,el1higstschl,3,1.0,3.0,2.0,2.0,3.0,1.0,,,,
