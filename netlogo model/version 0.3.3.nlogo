@@ -965,10 +965,10 @@ true
 true
 "" ""
 PENS
-"type0" 1.0 0 -16777216 true "" "plot count people with [decision-type = 0]"
-"type1" 1.0 0 -7500403 true "" "plot count people with [decision-type = 1]"
-"type2" 1.0 0 -2674135 true "" "plot count people with [decision-type = 2]"
-"type3" 1.0 0 -955883 true "" "plot count people with [decision-type = 3]"
+"no-choice" 1.0 0 -16777216 true "" "plot count people with [decision-type = 0]"
+"ER-only" 1.0 0 -7500403 true "" "plot count people with [decision-type = 1]"
+"Office" 1.0 0 -2674135 true "" "plot count people with [decision-type = 2]"
+"Mix" 1.0 0 -955883 true "" "plot count people with [decision-type = 3]"
 
 BUTTON
 180

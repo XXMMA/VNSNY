@@ -5,24 +5,34 @@ globals [
   ;date
   year
   day
+  current-tick
   ;var used for environment display
+  agent-type-color-map
   mouse-was-down?
   nyCDs-dataset
   heatmap-flag
   mouse-was-clicked?
   map-block-color
+  map-background-color
   map-line-color
   map-highlight-color
+  borough-color ; key : [boroCD-lower-limit boroCD-higher-limit]value: color-value
   heatmap-color
   boroCD-CDs
   maxval
   minval
   ;var used for model
+  ;stats
   pop-ratio-each-type ; key : type value : ratio
   pop-ratio-CD-in-each-type ; key type  value : [ [CDs] [ratios] ]
   nhats-ratio-each-type ; key : [type attrname] value : [[value1 value2 ....] [ratio1 ratio2]]
+  num-in-hosp-each-day
+
   weights ; key : [type "ER"/"Office"] value : [attr-weight social-weight effic-weight]
-  attr-names
+  nhats-attr-names
+  nhats-indep-attrs
+  nhats-indep-dep-attrs ; key : indep-attrs-name value: corresponding-dep-attrs-name
+  nhats-indep-dep-attrs-mapping ; key : dep-attrs-name value : key : corresponding-indep-attrs-value value : dep-attrs-value
   normalize-factor ; key : "attitude"/"social_norm"/"efficacy" value :[factor intercept]
   aa ; to make it more efficient, each normalization fator and intercept is stored in an individual variable
   ba
@@ -32,6 +42,7 @@ globals [
   be
   intervals ;
   last-of-stay ; key: type value: table: key : stay_days value : ratio
+  decision-intervals ; key: type value: table: key : interval_days value : ratio
   num-each-type ; key:type value: num of each type
   prob-hosp-after-decision ; key: type value: [ER-ratio Office-ratio]
   ;stats
@@ -83,6 +94,8 @@ people-own[
   hospitalization ; num of hospitalization
   days-in-hosp
   next-decision
+  last-update-attr
+  loyalty
 ]
 
 nyCDs-own[
@@ -117,8 +130,8 @@ to setup
   stop-inspecting-dead-agents
   setup-CD
   ;load-CMS-info
-  setup-people
   setup-var
+  setup-people
   reset-ticks
 end
 
@@ -126,7 +139,7 @@ end
 ;;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to setup-CD
   load-CDs
-  load-CDs-shape
+  load-and-draw-CDs-shape
   load-CDs-info
   map-patches
 end
@@ -137,15 +150,22 @@ to load-CDs
   gis:load-coordinate-system prj-filepath
   set nyCDs-dataset gis:load-dataset shp-filepath
   gis:set-world-envelope gis:envelope-of nyCDs-dataset
-  set map-block-color black
-  set map-line-color white
+  set map-block-color white
+  set map-background-color white
+  set map-line-color black
   set map-highlight-color red
   set heatmap-color blue
 end
 
-to load-CDs-shape
+to load-and-draw-CDs-shape
+  setup-borough-color
+  ask patches [set pcolor map-background-color]
   set boroCD-CDs table:make
   foreach gis:feature-list-of nyCDs-dataset[ one-block ->
+    let this-borough int ((gis:property-value one-block "BOROCD") / 100)
+    let this-borough-color table:get borough-color this-borough
+    gis:set-drawing-color this-borough-color
+    gis:fill one-block 1.0
     gis:set-drawing-color map-line-color
     gis:draw one-block 1.0
     let centroid gis:location-of gis:centroid-of one-block
@@ -159,6 +179,15 @@ to load-CDs-shape
       ]
     ]
   ]
+end
+
+to setup-borough-color
+  set borough-color table:make
+  table:put borough-color 1 19.5
+  table:put borough-color 2 9.5
+  table:put borough-color 3 49.5
+  table:put borough-color 4 109.5
+  table:put borough-color 5 69.5
 end
 
 to load-CDs-info
@@ -198,19 +227,108 @@ to map-patches
   file-close-all
 end
 
+;-----------------------------------------------------------------Setup global variables------------------------------------------------------------------------
+;---------------------------------------------------------------------------------------------------------------------------------------------------------------
+to setup-var
+  load-normalize-factor
+  load-weights
+  load-last-of-stay
+  load-decision-intervals
+  load-prob-hosp-after-decision
+  setup-global-var
+end
+
+to load-normalize-factor ; "attitude" "social_norm" "efficacy"  ****normalized = factor * attitude/social_norm/effficacy + intercept***
+  set normalize-factor table:make
+  file-open "data\\normalize_factors.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put normalize-factor item 0 row (list item 1 row item 2 row)
+  ]
+  file-close-all
+  set aa item 0 (table:get normalize-factor "attitude")
+  set ba item 1 (table:get normalize-factor "attitude")
+  set as item 0 (table:get normalize-factor "social_norm")
+  set bs item 1 (table:get normalize-factor "social_norm")
+  set ae item 0 (table:get normalize-factor "efficacy")
+  set be item 1 (table:get normalize-factor "efficacy")
+end
+
+to load-weights
+  set weights table:make
+  file-open "data\\weights.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put weights (list item 0 row item 5 row) (list item 6 row item 7 row item 8 row)
+  ]
+  file-close-all
+end
+
+to load-last-of-stay
+  set last-of-stay table:make
+  file-open "data\\los.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    let day-ratio table:make
+    foreach n-values item 1 row [i -> i] [i ->
+      table:put day-ratio (item (2 + 2 * i) row) (item (2 + 2 * i + 1) row)
+    ]
+    table:put last-of-stay (item 0 row) day-ratio
+  ]
+  file-close-all
+end
+
+to load-decision-intervals
+  set decision-intervals table:make
+  file-open "data\\decision_intervals.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    let day-ratio table:make
+    foreach n-values item 1 row [i -> i] [i ->
+      table:put day-ratio (item (2 + 2 * i) row) (item (2 + 2 * i + 1) row)
+    ]
+    table:put decision-intervals (item 0 row) day-ratio
+  ]
+  file-close-all
+end
+
+to load-prob-hosp-after-decision
+  set prob-hosp-after-decision table:make
+  file-open "data\\hosp_prob_after_decision.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put prob-hosp-after-decision item 0 row (list item 1 row item 2 row)
+  ]
+  file-close-all
+end
+
+to setup-global-var
+  set year start-year
+  set day 0
+  set heatmap-flag false
+end
+
 ;-----------------------------------------------------------Setup people agents----------------------------------------------------------------------------
 ;----------------------------------------------------------------------------------------------------------------------------------------------------------
 to setup-people
   load-pop-distribution
+  setup-people-color
   generate-people
-  assign-attr-to-people
+  setup-attr-to-people
   setup-other-var-of-people
+  setup-stats
 end
 ;----------------------------------------------------------------load-pop-distribution----------------------------------------------------------------------
 to load-pop-distribution
   load-pop-ratio-each-type
   load-pop-ratio-CD-in-each-type
   load-nhats-ratio-each-type
+  load-nhats-indep-dep-attrs-mapping
 end
 
 to load-pop-ratio-each-type
@@ -271,6 +389,35 @@ to load-nhats-ratio-each-type
   file-close-all
 end
 
+to load-nhats-indep-dep-attrs-mapping
+  set nhats-attr-names ["want-find-way-to" "feel-cheerful" "feel-bored" "feel-full-of-life" "feel-upset" "adjust-to-change" "self-determin"
+    "know-each-other" "willing-help-each-other" "can-be-trusted" "no-one-talk-to" "income" "education"]
+  set nhats-indep-attrs ["want-find-way-to" "feel-cheerful" "feel-full-of-life" "adjust-to-change"
+    "know-each-other" "willing-help-each-other" "can-be-trusted" "income" "education"]
+  set nhats-indep-dep-attrs table:make
+  table:put nhats-indep-dep-attrs "feel-full-of-life" "feel-bored"
+  table:put nhats-indep-dep-attrs "feel-cheerful" "feel-upset"
+  table:put nhats-indep-dep-attrs "adjust-to-change" "self-determin"
+  table:put nhats-indep-dep-attrs "know-each-other" "no-one-talk-to"
+
+  set nhats-indep-dep-attrs-mapping table:make
+  file-open "data\\nhats_attr_map.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    if table:has-key? nhats-indep-dep-attrs item 0 row
+    [
+      set row remove "" row
+      let nvalues item 2 row
+      let indep-dep table:make
+      foreach (range 0 nvalues) [i ->
+        table:put indep-dep item (3 + i * 2) row item (4 + i * 2) row
+      ]
+      table:put nhats-indep-dep-attrs-mapping (table:get nhats-indep-dep-attrs item 0 row) indep-dep
+    ]
+  ]
+  file-close-all
+end
 ;----------------------------------------------------------------generate-people----------------------------------------------------------------------
 to-report partition-under-prob [total prob-list]
   let accprob 0
@@ -288,6 +435,47 @@ to-report partition-under-prob [total prob-list]
   report partition-list
 end
 
+to setup-people-color
+  set agent-type-color-map table:make
+  table:put agent-type-color-map 0 5.0
+  table:put agent-type-color-map 1 15.0
+  table:put agent-type-color-map 2 25.0
+  table:put agent-type-color-map 3 35.0
+  table:put agent-type-color-map 4 45.0
+  table:put agent-type-color-map 5 55.0
+  table:put agent-type-color-map 6 65.0
+  table:put agent-type-color-map 7 75.0
+  table:put agent-type-color-map 8 85.0
+  table:put agent-type-color-map 9 95.0
+  table:put agent-type-color-map 10 105.0
+  table:put agent-type-color-map 11 115.0
+  table:put agent-type-color-map 12 125.0
+  table:put agent-type-color-map 13 135.0
+  table:put agent-type-color-map 14 0.0
+  table:put agent-type-color-map 15 43.0
+  show-people-color-legend
+end
+
+to show-people-color-legend
+  let left-up-x 0 - max-pxcor
+  let left-up-y max-pycor
+  foreach n-values 16 [i -> i] [i ->
+    let dual-race-sex-age parsed-type i
+    let text (word "type " i "-- dual: " item 0 dual-race-sex-age " race: " item 1 dual-race-sex-age " gender: " item 2 dual-race-sex-age " age: " item 3 dual-race-sex-age)
+    let textpatch-x left-up-x + (int(0 / 8) * 30 + 25)
+    let textpatch-y left-up-y - ((i mod 16) * 2 + 1)
+    ask patch textpatch-x textpatch-y [
+      set plabel text
+      set plabel-color table:get agent-type-color-map i
+    ]
+    create-turtles 1 [
+      set color table:get agent-type-color-map i
+      set heading 0
+      setxy textpatch-x + 1 textpatch-y
+    ]
+  ]
+end
+
 to generate-people
   ; pop-ratio-each-type => key : type value : ratio
   let type-list table:keys pop-ratio-each-type
@@ -297,6 +485,7 @@ to generate-people
   (foreach type-list partition-list [ [this-type this-type-partition] ->
     ; pop-ratio-CD-in-each-type => key type  value: [ [CDs] [ratios] ]
     table:put num-each-type this-type this-type-partition
+    let this-color table:get agent-type-color-map this-type ; add color
     let CD-list item 0 table:get pop-ratio-CD-in-each-type this-type
     let CD-ratio-list item 1 table:get pop-ratio-CD-in-each-type this-type
     let this-partition-list partition-under-prob this-type-partition CD-ratio-list
@@ -304,13 +493,15 @@ to generate-people
       create-people this-partition[
         set agent-type this-type
         set boroCD this-CD
+        set color this-color ; add color
         move-to one-of patches with [mapping-boroCD = [boroCD] of myself]
+        setxy xcor + (random-float 1) - 0.5 ycor + (random-float 1) - 0.5
       ]
     ])
   ])
 end
 
-;-----------------------------------------------------------assign attributes to people-------------------------------------------------------------------
+;-----------------------------------------------------------setup attributes to people-------------------------------------------------------------------
 to-report random-choice-under-prob [choice-list prob-list]
   let dice random-float 1
   let accprob 0
@@ -323,121 +514,64 @@ to-report random-choice-under-prob [choice-list prob-list]
   report last choice-list
 end
 
-to parse-type
+to parse-type [this-agent-type]
   ;set agent-type (age + 2 * gender + 4 * race + 8 * dual-eligible)
-  set dual-eligible bitwise-and agent-type 8
-  set race bitwise-and agent-type 4
-  set gender bitwise-and agent-type 2
-  set age bitwise-and agent-type 1
+  set dual-eligible bitwise-and this-agent-type 8
+  set race bitwise-and this-agent-type 4
+  set gender bitwise-and this-agent-type 2
+  set age bitwise-and this-agent-type 1
+end
+
+to-report parsed-type [this-agent-type]
+  let this-dual-eligible bitwise-and this-agent-type 8
+  let this-race bitwise-and this-agent-type 4
+  let this-gender bitwise-and this-agent-type 2
+  let this-age bitwise-and this-agent-type 1
+  report (list this-dual-eligible this-race this-gender this-age)
 end
 
 to-report bitwise-and [num digit]
   report int (num / digit) mod 2
 end
 
-to assign-attr-to-people
-  set attr-names ["want-find-way-to" "feel-cheerful" "feel-bored" "feel-full-of-life" "feel-upset" "adjust-to-change" "self-determin"
-    "know-each-other" "willing-help-each-other" "can-be-trusted" "no-one-talk-to" "income" "education"]
+to setup-attr-to-people
   ;nhats-ratio-each-type => key : [type attrname] value: [[value1 value2 ....] [ratio1 ratio2]]
   foreach table:keys pop-ratio-each-type [ this-type ->
     let attr-dict table:make
-    foreach attr-names [this-attr ->
+    foreach nhats-attr-names [this-attr ->
       table:put attr-dict this-attr (table:get nhats-ratio-each-type (list this-type this-attr))
     ]
     ask people with [agent-type = this-type][
-      parse-type
-      foreach attr-names [this-attr ->
+      parse-type agent-type
+      foreach nhats-indep-attrs [this-attr ->
         let the-choice random-choice-under-prob (item 0 table:get attr-dict this-attr) (item 1 table:get attr-dict this-attr)
         run (word "set " this-attr " " the-choice)
       ]
+      (foreach table:keys nhats-indep-dep-attrs table:values nhats-indep-dep-attrs [[this-indep-attr this-dep-attr] ->
+        let this-indep-attr-val runresult this-indep-attr
+        let this-dep-attr-val table:get (table:get nhats-indep-dep-attrs-mapping this-dep-attr) this-indep-attr-val
+        run (word "set " this-dep-attr " " this-dep-attr-val)
+      ])
     ]
   ]
 
 end
 
-;----------------------------------------------------------- setup other variables of people--------------------------------------------------------------------
+;----------------------------------------------------------- setup other variables related to people--------------------------------------------------------------------
 to setup-other-var-of-people
   ask people [
     set in-hosp false
-    set next-decision 13
+    let potential-interval table:get decision-intervals agent-type
+    set next-decision random-choice-under-prob (table:keys potential-interval) (table:values potential-interval)
     set decisions-record [0 0]
     set decision-type 0
   ]
-end
-;-----------------------------------------------------------------Setup global variables------------------------------------------------------------------------
-;---------------------------------------------------------------------------------------------------------------------------------------------------------------
-to setup-var
-  load-normalize-factor
-  load-weights
-  load-last-of-stay
-  load-prob-hosp-after-decision
-  setup-global-var
-  setup-stats
-end
-
-to load-normalize-factor ; "attitude" "social_norm" "efficacy"  ****normalized = factor * attitude/social_norm/effficacy + intercept***
-  set normalize-factor table:make
-  file-open "data\\normalize_factors.csv"
-  let headings csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    table:put normalize-factor item 0 row (list item 1 row item 2 row)
-  ]
-  file-close-all
-  set aa item 0 (table:get normalize-factor "attitude")
-  set ba item 1 (table:get normalize-factor "attitude")
-  set as item 0 (table:get normalize-factor "social_norm")
-  set bs item 1 (table:get normalize-factor "social_norm")
-  set ae item 0 (table:get normalize-factor "efficacy")
-  set ae item 1 (table:get normalize-factor "efficacy")
-end
-
-to load-weights
-  set weights table:make
-  file-open "data\\weights__.csv"
-  let headings csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    table:put weights (list item 0 row item 1 row) (list item 2 row item 3 row item 4 row)
-  ]
-  file-close-all
-end
-
-to load-last-of-stay
-  set last-of-stay table:make
-  file-open "data\\los.csv"
-  let headings csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    let day-ratio table:make
-    foreach n-values item 1 row [i -> i] [i ->
-      table:put day-ratio (item (2 + 2 * i) row) (item (2 + 2 * i + 1) row)
-    ]
-    table:put last-of-stay (item 0 row) day-ratio
-  ]
-  file-close-all
-end
-
-to load-prob-hosp-after-decision
-  set prob-hosp-after-decision table:make
-  file-open "data\\hosp_prob_after_decision.csv"
-  let headings csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    table:put prob-hosp-after-decision item 0 row (list item 1 row item 2 row)
-  ]
-  file-close-all
-end
-
-to setup-global-var
-  set year start-year
-  set day 0
-  set heatmap-flag false
 end
 
 to setup-stats
   set each-decision-each-type table:make
   set total-decisions-each-type table:make
+  set num-in-hosp-each-day []
   foreach table:keys pop-ratio-each-type [this-type ->
     table:put total-decisions-each-type this-type 0
     table:put each-decision-each-type this-type [0 0]
@@ -462,7 +596,9 @@ to cancel-last-chosen
       stop-inspecting nyCD CD-id
       ask nyCD CD-id[
         let last-CD gis:find-one-feature nyCDs-dataset "BOROCD" (word boroCD)
-        gis:set-drawing-color map-block-color
+        let this-borough int (boroCD / 100)
+        let this-borough-color table:get borough-color this-borough
+        gis:set-drawing-color this-borough-color
         gis:fill last-CD  1.0
         gis:set-drawing-color map-line-color
         gis:draw last-CD 1.0
@@ -502,11 +638,10 @@ to-report mouse-clicked?
   report (mouse-was-down? = true and not mouse-down?)
 end
 
-to test-draw-different-brough
+to test-draw-different-borough
   gis:set-drawing-color white
   foreach gis:find-range nyCDs-dataset "BOROCD" 200 300 [one-block ->
   gis:draw one-block 1.0]
-  tick
 end
 
 to show-heatmap
@@ -537,7 +672,9 @@ end
 to clear-map
    set heatmap-flag false
    foreach gis:feature-list-of nyCDs-dataset[ one-block ->
-    gis:set-drawing-color map-block-color
+    let this-borough int ((gis:property-value one-block "BOROCD") / 100)
+    let this-borough-color table:get borough-color this-borough
+    gis:set-drawing-color this-borough-color
     gis:fill one-block  1.0
     gis:set-drawing-color map-line-color
     gis:draw one-block 1.0
@@ -607,14 +744,30 @@ to make-decision
     set ws_off-cl item 1 table:get weights (list this-type "Office")
     set we_off-cl item 2 table:get weights (list this-type "Office")
 
+    if roll-dice 1 > equal-weights-prob
+    [
+      set wa_er roll-dice weights-range
+      set ws_er roll-dice weights-range
+      set we_er roll-dice weights-range
+    ]
+
     let new-decisions_er 0
     let new-decisions_off-cl 0
     ask people with [agent-type = this-type][
+      set last-update-attr last-update-attr + 1
       ifelse in-hosp
       [action-in-hosp]
       [
         set next-decision next-decision - 1
         if next-decision <= 0 [
+          if last-update-attr >= attr-update-freq
+          [
+            set last-update-attr 0
+            update-attrs
+          ]
+          let potential-interval table:get decision-intervals agent-type
+          set next-decision random-choice-under-prob (table:keys potential-interval) (table:values potential-interval)
+
           let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
           let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_atc_er * adjust-to-change - w_noto_er * no-one-talk-to
           let efficacy_er w_inc_er * income + w_edu_er * education
@@ -635,29 +788,33 @@ to make-decision
           ifelse max-intention = intention_off-cl
           [
             ifelse max-intention != intention_er
-            [set new-decisions_off-cl new-decisions_off-cl + 1
-            set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
-            let dice random-float 1
-            ifelse dice < prob-hosp-after-off-cl
-            [go-to-hosp]
-              [set next-decision 10]]
+            [
+              set new-decisions_off-cl new-decisions_off-cl + 1
+              set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+              let dice random-float 1
+              ifelse dice < prob-hosp-after-off-cl
+              [go-to-hosp]
+              []
+            ]
             [
               let dice random-float 1
               ifelse dice < 0.5
               [
-            set new-decisions_er new-decisions_er + 1
-            set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
-            let dice1 random-float 1
-            ifelse dice1 < prob-hosp-after-er
-            [go-to-hosp]
-            [set next-decision 10]
-          ]
-              [set new-decisions_off-cl new-decisions_off-cl + 1
-            set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
-            let dice2 random-float 1
-            ifelse dice2 < prob-hosp-after-off-cl
-            [go-to-hosp]
-              [set next-decision 10]]
+                set new-decisions_er new-decisions_er + 1
+                set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
+                let dice1 random-float 1
+                ifelse dice1 < prob-hosp-after-er
+                [go-to-hosp]
+                []
+              ]
+              [
+                set new-decisions_off-cl new-decisions_off-cl + 1
+                set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+                let dice2 random-float 1
+                ifelse dice2 < prob-hosp-after-off-cl
+                [go-to-hosp]
+                []
+              ]
             ]
           ]
           [
@@ -666,23 +823,44 @@ to make-decision
             let dice random-float 1
             ifelse dice < prob-hosp-after-er
             [go-to-hosp]
-            [set next-decision 10]
+            []
           ]
         ]
       ]
       ifelse item 0 decisions-record != 0
       [
-        ifelse item 1 decisions-record != 0
-        [set decision-type 3]
-        [set decision-type 1]
+        let ratio (item 1 decisions-record) / (item 0 decisions-record + item 1 decisions-record)
+        ifelse ratio >= 0.9
+        [
+          set decision-type 2
+          set loyalty ratio
+        ]
+        [
+          ifelse ratio <= 0.1
+          [
+            set decision-type 1
+            set loyalty (1 - ratio)
+          ]
+          [
+            set decision-type 3
+            set loyalty max (list ratio (1 - ratio) )
+          ]
+        ]
       ]
       [
         if item 1 decisions-record != 0
-        [set decision-type 2]
+        [
+          set decision-type 2
+          set loyalty 1
+        ]
       ]
     ]
     update-stats this-type new-decisions_er new-decisions_off-cl
   ]
+end
+
+to-report roll-dice [x]
+  report random-float x
 end
 
 to go-to-hosp
@@ -694,8 +872,24 @@ end
 
 to action-in-hosp
   set days-in-hosp days-in-hosp + 1
-  set los los - 1
-  if los <= 0 [set in-hosp false]
+  ifelse los > 0
+  [
+    set los los - 1
+
+  ]
+  [set in-hosp false]
+end
+
+to update-attrs
+  foreach nhats-indep-attrs [this-attr ->
+    let the-choice random-choice-under-prob (item 0 (table:get nhats-ratio-each-type (list agent-type this-attr)) ) (item 1 (table:get nhats-ratio-each-type (list agent-type this-attr)) )
+    run (word "set " this-attr " " the-choice)
+  ]
+  (foreach table:keys nhats-indep-dep-attrs table:values nhats-indep-dep-attrs [[this-indep-attr this-dep-attr] ->
+    let this-indep-attr-val runresult this-indep-attr
+    let this-dep-attr-val table:get (table:get nhats-indep-dep-attrs-mapping this-dep-attr) this-indep-attr-val
+    run (word "set " this-dep-attr " " this-dep-attr-val)
+  ])
 end
 
 to update-stats [this-type new-decisions_er new-decisions_off-cl]
@@ -709,6 +903,7 @@ end
 
 to update-global-var
   set day day + 1
+  set num-in-hosp-each-day lput count people with [in-hosp = true] num-in-hosp-each-day
   if day > 365
   [
     set day  (day mod 365)
@@ -744,11 +939,11 @@ ticks
 30.0
 
 BUTTON
-20
-23
-125
-56
-NIL
+9
+10
+64
+97
+Setup All
 setup\n
 NIL
 1
@@ -761,11 +956,11 @@ NIL
 1
 
 BUTTON
-138
-23
-277
-56
-NIL
+6
+442
+320
+501
+Overview 0ne Community District
 overview-one-CD
 T
 1
@@ -778,21 +973,21 @@ NIL
 1
 
 CHOOSER
-20
-64
-247
-109
+9
+509
+318
+554
 heatmap-info
 heatmap-info
 "trans_num" "pct_res" "pct_parks" "pct_white" "pct_over65" "pct_rent_burd" "pct_served_parks" "pct_clean_strts" "crime" "pct_unemployment" "pct_poverty" "parks_num" "hosp_clinic_num" "pop_dens" "pct_non_res"
 4
 
 BUTTON
-19
-113
-132
-146
-NIL
+7
+562
+116
+617
+Show Heatmap
 show-heatmap\n
 NIL
 1
@@ -805,11 +1000,11 @@ NIL
 1
 
 BUTTON
-254
-64
-315
-147
-NIL
+119
+562
+213
+617
+Clear Heat Map
 clear-map\n
 NIL
 1
@@ -822,11 +1017,11 @@ NIL
 1
 
 BUTTON
-135
-113
-248
-146
-3D-info-map
+219
+562
+320
+617
+3D Visualization
 show-3D-info-map\nwait 0.2\nadjust-3D-info-map
 NIL
 1
@@ -839,12 +1034,12 @@ NIL
 1
 
 INPUTBOX
-19
-148
-174
-208
+9
+104
+164
+164
 num-agents
-10000.0
+5000.0
 1
 0
 Number
@@ -883,17 +1078,17 @@ true
 true
 "" ""
 PENS
-"type0" 1.0 0 -16777216 true "" "plot count people with [decision-type = 0]"
-"type1" 1.0 0 -7500403 true "" "plot count people with [decision-type = 1]"
-"type2" 1.0 0 -2674135 true "" "plot count people with [decision-type = 2]"
-"type3" 1.0 0 -955883 true "" "plot count people with [decision-type = 3]"
+"no-choice" 1.0 0 -16777216 true "" "plot count people with [decision-type = 0]"
+"ER-only" 1.0 0 -7500403 true "" "plot count people with [decision-type = 1]"
+"Office" 1.0 0 -2674135 true "" "plot count people with [decision-type = 2]"
+"Mix" 1.0 0 -955883 true "" "plot count people with [decision-type = 3]"
 
 BUTTON
-180
-149
-314
-206
-NIL
+186
+105
+320
+164
+GO
 go
 T
 1
@@ -906,21 +1101,21 @@ NIL
 1
 
 SWITCH
-20
-214
-204
-247
+8
+301
+184
+334
 social-influence-decay?
 social-influence-decay?
-1
+0
 1
 -1000
 
 INPUTBOX
-20
-251
-109
-311
+188
+301
+321
+361
 decay-factor
 0.0
 1
@@ -1230,7 +1425,7 @@ INPUTBOX
 2253
 987
 wa_off-cl
-0.5
+1.0
 1
 0
 Number
@@ -1252,16 +1447,16 @@ INPUTBOX
 2566
 987
 we_off-cl
-0.5
+1.0
 1
 0
 Number
 
 INPUTBOX
-21
-332
-172
-392
+7
+371
+161
+431
 total_sample
 0.0
 1
@@ -1269,10 +1464,10 @@ total_sample
 Number
 
 BUTTON
-217
-217
-280
-250
+10
+628
+321
+661
 NIL
 test
 NIL
@@ -1308,10 +1503,10 @@ w_noto_off-cl
 Number
 
 INPUTBOX
-111
-251
-266
-311
+7
+236
+162
+296
 start-year
 2008.0
 1
@@ -1319,23 +1514,23 @@ start-year
 Number
 
 INPUTBOX
-20
-402
-173
-462
+8
+171
+164
+231
 steps
-365.0
+730.0
 1
 0
 Number
 
 BUTTON
-177
-402
-300
-462
-Go steps
-while [ticks <= steps]\n[go]
+186
+170
+321
+232
+Go Steps
+set current-tick ticks\nwhile [ticks < current-tick + steps]\n[go]
 NIL
 1
 T
@@ -1369,10 +1564,10 @@ day
 14
 
 PLOT
-1636
-248
-2075
-704
+1630
+10
+2135
+390
 people in hospital
 NIL
 NIL
@@ -1385,6 +1580,224 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot count people with [in-hosp = true]"
+
+INPUTBOX
+170
+237
+321
+297
+attr-update-freq
+14.0
+1
+0
+Number
+
+PLOT
+1631
+396
+2137
+803
+distribution of days with inhospital patients
+in-hospital people number
+count of days
+0.0
+100.0
+0.0
+100.0
+true
+false
+"" "set-plot-x-range 0 ( (max num-in-hosp-each-day) + 1)"
+PENS
+"default" 1.0 1 -2674135 true "" "histogram num-in-hosp-each-day"
+
+BUTTON
+94
+10
+230
+53
+Setup Environment
+setup-CD\nsetup-var\nreset-ticks
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+265
+10
+320
+98
+Clear All
+clear-all
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+94
+59
+231
+98
+Setup Agents
+setup-people\nreset-ticks
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+168
+370
+320
+430
+Load Weights
+load-weights
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+PLOT
+1628
+10
+2236
+673
+ER
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"type 0" 1.0 0 -16777216 true "" "plot count people with [decision-type = 1 and agent-type = 0]"
+"type 1" 1.0 0 -7500403 true "" "plot count people with [decision-type = 1 and agent-type = 1]"
+"type 2" 1.0 0 -2674135 true "" "plot count people with [decision-type = 1 and agent-type = 2]"
+"type 3" 1.0 0 -955883 true "" "plot count people with [decision-type = 1 and agent-type = 3]"
+"type 4" 1.0 0 -6459832 true "" "plot count people with [decision-type = 1 and agent-type = 4]"
+"type 5" 1.0 0 -1184463 true "" "plot count people with [decision-type = 1 and agent-type = 5]"
+"type 6" 1.0 0 -10899396 true "" "plot count people with [decision-type = 1 and agent-type = 6]"
+"type 7" 1.0 0 -13840069 true "" "plot count people with [decision-type = 1 and agent-type = 7]"
+"type 8" 1.0 0 -14835848 true "" "plot count people with [decision-type = 1 and agent-type = 8]"
+"type 9" 1.0 0 -11221820 true "" "plot count people with [decision-type = 1 and agent-type = 9]"
+"type 10" 1.0 0 -13791810 true "" "plot count people with [decision-type = 1 and agent-type = 10]"
+"type 11" 1.0 0 -13345367 true "" "plot count people with [decision-type = 1 and agent-type = 11]"
+"type 12" 1.0 0 -8630108 true "" "plot count people with [decision-type = 1 and agent-type = 12]"
+"type 13" 1.0 0 -5825686 true "" "plot count people with [decision-type = 1 and agent-type = 13]"
+"type 14" 1.0 0 -2064490 true "" "plot count people with [decision-type = 1 and agent-type = 14]"
+"type 15" 1.0 0 -408670 true "" "plot count people with [decision-type = 1 and agent-type = 15]"
+
+PLOT
+2243
+10
+2849
+672
+Office and Clinics
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"type 0" 1.0 0 -16777216 true "" "plot count people with [decision-type = 2 and agent-type = 0]"
+"type 1" 1.0 0 -7500403 true "" "plot count people with [decision-type = 2 and agent-type = 1]"
+"type 2" 1.0 0 -2674135 true "" "plot count people with [decision-type = 2 and agent-type = 2]"
+"type 3" 1.0 0 -955883 true "" "plot count people with [decision-type = 2 and agent-type = 3]"
+"type 4" 1.0 0 -6459832 true "" "plot count people with [decision-type = 2 and agent-type = 4]"
+"type 5" 1.0 0 -1184463 true "" "plot count people with [decision-type = 2 and agent-type = 5]"
+"type 6" 1.0 0 -10899396 true "" "plot count people with [decision-type = 2 and agent-type = 6]"
+"type 7" 1.0 0 -13840069 true "" "plot count people with [decision-type = 2 and agent-type = 7]"
+"type 8" 1.0 0 -14835848 true "" "plot count people with [decision-type = 2 and agent-type = 8]"
+"type 9" 1.0 0 -11221820 true "" "plot count people with [decision-type = 2 and agent-type = 9]"
+"type 10" 1.0 0 -13791810 true "" "plot count people with [decision-type = 2 and agent-type = 10]"
+"type 11" 1.0 0 -13345367 true "" "plot count people with [decision-type = 2 and agent-type = 11]"
+"type 12" 1.0 0 -8630108 true "" "plot count people with [decision-type = 2 and agent-type = 12]"
+"type 13" 1.0 0 -5825686 true "" "plot count people with [decision-type = 2 and agent-type = 13]"
+"type 14" 1.0 0 -2064490 true "" "plot count people with [decision-type = 2 and agent-type = 14]"
+"type 15" 1.0 0 -408670 true "" "plot count people with [decision-type = 2 and agent-type = 15]"
+
+PLOT
+2855
+10
+3468
+674
+Mixture
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"type 0" 1.0 0 -16777216 true "" "plot count people with [decision-type = 3 and agent-type = 0]"
+"type 1" 1.0 0 -7500403 true "" "plot count people with [decision-type = 3 and agent-type = 1]"
+"type 2" 1.0 0 -2674135 true "" "plot count people with [decision-type = 3 and agent-type = 2]"
+"type 3" 1.0 0 -955883 true "" "plot count people with [decision-type = 3 and agent-type = 3]"
+"type 4" 1.0 0 -6459832 true "" "plot count people with [decision-type = 3 and agent-type = 4]"
+"type 5" 1.0 0 -1184463 true "" "plot count people with [decision-type = 3 and agent-type = 5]"
+"type 6" 1.0 0 -10899396 true "" "plot count people with [decision-type = 3 and agent-type = 6]"
+"type 7" 1.0 0 -13840069 true "" "plot count people with [decision-type = 3 and agent-type = 7]"
+"type 8" 1.0 0 -14835848 true "" "plot count people with [decision-type = 3 and agent-type = 8]"
+"type 9" 1.0 0 -11221820 true "" "plot count people with [decision-type = 3 and agent-type = 9]"
+"type 10" 1.0 0 -13791810 true "" "plot count people with [decision-type = 3 and agent-type = 10]"
+"type 11" 1.0 0 -13345367 true "" "plot count people with [decision-type = 3 and agent-type = 11]"
+"type 12" 1.0 0 -8630108 true "" "plot count people with [decision-type = 3 and agent-type = 12]"
+"type 13" 1.0 0 -5825686 true "" "plot count people with [decision-type = 3 and agent-type = 13]"
+"type 14" 1.0 0 -2064490 true "" "plot count people with [decision-type = 3 and agent-type = 14]"
+"type 15" 1.0 0 -408670 true "" "plot count people with [decision-type = 3 and agent-type = 15]"
+
+INPUTBOX
+10
+667
+147
+727
+equal-weights-prob
+0.8
+1
+0
+Number
+
+INPUTBOX
+165
+667
+321
+727
+weights-range
+1.3
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
