@@ -26,6 +26,8 @@ globals [
   ;var used for model
   ;stats
   pop-ratio-each-type ; key : type value : ratio
+  type-list ; keys of pop-ratio-each-type
+  type-ratio-list ; values of pop-ratio-each-type
   pop-ratio-CD-in-each-type ; key type  value : [ [CDs] [ratios] ]
   nhats-ratio-each-type ; key : [type attrname] value : [[value1 value2 ....] [ratio1 ratio2]]
   num-in-hosp-each-day
@@ -43,14 +45,26 @@ globals [
   bs
   ae
   be
+
+  n-new-borns
+  distribution-new-pop
+
   intervals ;
   last-of-stay ; key: type value: table: key : stay_days value : ratio
   decision-intervals ; key: type value: table: key : interval_days value : ratio
   num-each-type ; key:type value: num of each type
   prob-hosp-after-decision ; key: type value: [ER-ratio Office-ratio]
+  costs-er ; key : type value : [shape scale]
+  costs-off-cl ; key : type value : [shape scale]
+  costs-hosp ; key : type value : [shape scale]
   ;stats
   each-decision-each-type ; key: type value: [ER-decisions-num-by-each-type Office-decisions-num-by-each-type]
   total-decisions-each-type ; key: type value: num-of-decisions-by-each-type
+
+  all-utilities
+  trans-all-utilities
+  death-rate ; key : utility-group-code value : death rate
+  minimum-live-days
 ]
 
 breed[nyCDs nyCD]
@@ -93,12 +107,18 @@ people-own[
   in-hosp
   severity
   decisions-record ; [er office-clinics]
+  decisions-count
   decision-type
   hospitalization ; num of hospitalization
   days-in-hosp
   next-decision
   last-update-attr
   loyalty
+  live-days
+  one-year-period
+  judge-day
+  utility
+  utility-group ; 1: low 2: middle 3: high
 ]
 
 nyCDs-own[
@@ -235,9 +255,11 @@ end
 to setup-var
   load-normalize-factor
   load-weights
+  load-costs
   load-last-of-stay
   load-decision-intervals
   load-prob-hosp-after-decision
+  load-death-rate
   setup-global-var
 end
 
@@ -269,6 +291,20 @@ to load-weights
     table:put floating-weights (list item 0 row item 5 row) (list item 9 row item 10 row item 11 row)
   ]
   file-close-all
+end
+
+to load-costs
+  set costs-er table:make
+  set costs-off-cl table:make
+  set costs-hosp table:make
+  file-open "data\\costs.csv"
+  let headings csv:from-row file-read-line
+  while [not file-at-end?] [
+    let row csv:from-row file-read-line
+    if item 2 row = 1 [table:put costs-er item 4 row (list item 1 row (1 / item 0 row))]
+    if item 2 row = 2 [table:put costs-off-cl item 4 row (list item 1 row (1 / item 0 row))]
+    if item 2 row = 3 [table:put costs-hosp item 4 row (list item 1 row (1 / item 0 row))]
+  ]
 end
 
 to load-last-of-stay
@@ -312,10 +348,22 @@ to load-prob-hosp-after-decision
   file-close-all
 end
 
+to load-death-rate
+  set death-rate table:make
+  file-open "data\\death_rate.csv"
+  let headings csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    table:put death-rate item 1 row (item 2 row) / 100
+  ]
+  file-close-all
+end
+
 to setup-global-var
   set year start-year
-  set day 0
+  set day 1
   set heatmap-flag false
+  set minimum-live-days 120
 end
 
 ;-----------------------------------------------------------Setup people agents----------------------------------------------------------------------------
@@ -479,8 +527,8 @@ end
 
 to generate-people
   ; pop-ratio-each-type => key : type value : ratio
-  let type-list table:keys pop-ratio-each-type
-  let type-ratio-list table:values pop-ratio-each-type
+  set type-list table:keys pop-ratio-each-type
+  set type-ratio-list table:values pop-ratio-each-type
   let partition-list partition-under-prob num-agents type-ratio-list
   set num-each-type table:make
   (foreach type-list partition-list [ [this-type this-type-partition] ->
@@ -719,8 +767,12 @@ end
 ;---------------------------------------------------------------Model Pipeline---------------------------------------------------------------------------------
 ;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to go
+  if day = 1 [setup-new-pop-during-a-year]
+  add-new-agents
   make-decisions
   update-global-var
+  if day mod 90 = 0 [plot-utility]
+  if day mod 30 = 0 [update-utility-group]
   tick
 end
 
@@ -761,13 +813,26 @@ to make-decisions
 
     let new-decisions_er 0
     let new-decisions_off-cl 0
+
+    let cost-er table:get costs-er this-type
+    let cost-off-cl table:get costs-off-cl this-type
+    let cost-hosp table:get costs-hosp this-type
+
     ask people with [agent-type = this-type][
       set last-update-attr last-update-attr + 1
+      set live-days live-days + 1
+      if live-days = minimum-live-days
+      [
+        set one-year-period 1
+        set judge-day (random 365) + 1
+      ]
+
       ifelse in-hosp
-      [action-in-hosp]
+      [action-in-hosp cost-hosp]
       [
         set next-decision next-decision - 1
         if next-decision <= 0 [
+          set decisions-count decisions-count + 1
           if last-update-attr >= attr-update-freq
           [
             set last-update-attr 0
@@ -799,6 +864,7 @@ to make-decisions
             [
               set new-decisions_off-cl new-decisions_off-cl + 1
               set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+              set utility utility + (random-gamma item 0 cost-off-cl item 1 cost-off-cl)
               let dice random-float 1
               ifelse dice < prob-hosp-after-off-cl
               [go-to-hosp]
@@ -810,6 +876,7 @@ to make-decisions
               [
                 set new-decisions_er new-decisions_er + 1
                 set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
+                set utility utility + (random-gamma item 0 cost-er item 1 cost-er)
                 let dice1 random-float 1
                 ifelse dice1 < prob-hosp-after-er
                 [go-to-hosp]
@@ -818,6 +885,7 @@ to make-decisions
               [
                 set new-decisions_off-cl new-decisions_off-cl + 1
                 set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+                set utility utility + (random-gamma item 0 cost-off-cl item 1 cost-off-cl)
                 let dice2 random-float 1
                 ifelse dice2 < prob-hosp-after-off-cl
                 [go-to-hosp]
@@ -828,6 +896,7 @@ to make-decisions
           [
             set new-decisions_er new-decisions_er + 1
             set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
+            set utility utility + (random-gamma item 0 cost-er item 1 cost-er)
             let dice random-float 1
             ifelse dice < prob-hosp-after-er
             [go-to-hosp]
@@ -862,6 +931,22 @@ to make-decisions
           set loyalty 1
         ]
       ]
+      if one-year-period != 0
+      [
+        if (one-year-period = judge-day) and (utility-group != 0) ; make judgement
+        [
+          if roll-dice 1 <= table:get death-rate utility-group
+          [
+            die
+          ]
+        ]
+        set one-year-period one-year-period + 1
+        if one-year-period > 365
+        [
+          set judge-day (random 365) + 1
+          set one-year-period 1
+        ]
+      ]
     ]
     update-stats this-type new-decisions_er new-decisions_off-cl
   ]
@@ -879,12 +964,12 @@ to go-to-hosp
   set los random-choice-under-prob (table:keys potential-los) (table:values potential-los)
 end
 
-to action-in-hosp
+to action-in-hosp [cost-hosp]
   set days-in-hosp days-in-hosp + 1
   ifelse los > 0
   [
     set los los - 1
-
+    set utility utility + (random-gamma item 0 cost-hosp item 1 cost-hosp)
   ]
   [set in-hosp false]
 end
@@ -909,6 +994,49 @@ end
 
 ;------------------------------------------------------------Update global variables---------------------------------------------------------------------------
 ;--------------------------------------------------------------------------------------------------------------------------------------------------------------
+to setup-new-pop-during-a-year
+  set n-new-borns new-seniors-rate-percentage * 0.01 * (count people)
+  let random-days n-values n-new-borns [i -> (random 365) + 1]
+  set distribution-new-pop table:counts random-days
+end
+
+to add-new-agents
+  if member? day table:keys distribution-new-pop
+  [
+    let today-new-borns table:get distribution-new-pop day
+    create-people today-new-borns [
+      set agent-type random-choice-under-prob type-list type-ratio-list
+      parse-type agent-type
+
+      let CDs-ratio-for-this-type table:get pop-ratio-CD-in-each-type agent-type
+      set color table:get agent-type-color-map agent-type
+      set boroCD random-choice-under-prob item 0 CDs-ratio-for-this-type item 1 CDs-ratio-for-this-type
+      move-to one-of patches with [mapping-boroCD = [boroCD] of myself]
+      setxy xcor + (random-float 1) - 0.5 ycor + (random-float 1) - 0.5
+
+      set in-hosp false
+      let potential-interval table:get decision-intervals agent-type
+      set next-decision random-choice-under-prob (table:keys potential-interval) (table:values potential-interval)
+      set decisions-record [0 0]
+      set decision-type 0
+
+      let attr-dict table:make
+      foreach nhats-attr-names [this-attr ->
+        table:put attr-dict this-attr (table:get nhats-ratio-each-type (list agent-type this-attr))
+      ]
+
+      foreach nhats-indep-attrs [this-attr ->
+        let the-choice random-choice-under-prob (item 0 table:get attr-dict this-attr) (item 1 table:get attr-dict this-attr)
+        run (word "set " this-attr " " the-choice)
+      ]
+      (foreach table:keys nhats-indep-dep-attrs table:values nhats-indep-dep-attrs [[this-indep-attr this-dep-attr] ->
+        let this-indep-attr-val runresult this-indep-attr
+        let this-dep-attr-val table:get (table:get nhats-indep-dep-attrs-mapping this-dep-attr) this-indep-attr-val
+        run (word "set " this-dep-attr " " this-dep-attr-val)
+      ])
+    ]
+  ]
+end
 
 to update-global-var
   set day day + 1
@@ -917,6 +1045,60 @@ to update-global-var
   [
     set day  (day mod 365)
     set year year + 1
+  ]
+end
+
+to plot-utility
+  set all-utilities sort-by > [utility] of people
+  set trans-all-utilities (list ((item 0 all-utilities) ^ 0.3) )
+  ;plotxy 0 item 0 ln-all-utilities
+  let i 1
+  while [i < length all-utilities]
+  [set all-utilities replace-item i all-utilities (item (i - 1) all-utilities + item i all-utilities)
+    set trans-all-utilities lput ((item i all-utilities) ^ 0.3)  trans-all-utilities
+   ;plotxy i item i ln-all-utilities
+   set i i + 1]
+
+  let trans-total last trans-all-utilities
+  let j 0
+  while [j < length trans-all-utilities]
+  [set trans-all-utilities replace-item j trans-all-utilities ((item j trans-all-utilities) / trans-total)
+   set j j + 1]
+
+  set-current-plot "utility"
+  clear-plot
+  set-current-plot-pen "pen1"
+  set i 0
+  while [i < length all-utilities]
+  [plotxy i item i all-utilities
+   set i i + 1]
+
+  set-current-plot "trans-utility"
+  clear-plot
+  set-plot-x-range 0 1
+  set-plot-y-range 0 1
+  set-current-plot-pen "pen1"
+  let n-trans-all-utilities length trans-all-utilities
+  set i 0
+  while [i < length trans-all-utilities]
+  [plotxy (i / n-trans-all-utilities) (item i trans-all-utilities)
+   set i i + 1]
+end
+
+to update-utility-group
+  set all-utilities sort-by < [utility] of people with [decisions-count > 0]
+  let n20 item (round (count people) * 0.2) all-utilities
+  let n80 item (round (count people) * 0.8) all-utilities
+  ask people[
+    if decisions-count > 0 [
+      ifelse utility >= n80
+      [set utility-group 3]
+      [
+        ifelse utility <= n20
+        [set utility-group 1]
+        [set utility-group 2]
+      ]
+    ]
   ]
 end
 @#$#@#$#@
@@ -1269,7 +1451,7 @@ INPUTBOX
 2253
 897
 wa_er
-0.0418933971119167
+1.0
 1
 0
 Number
@@ -1291,7 +1473,7 @@ INPUTBOX
 2566
 897
 we_er
-0.6786089816921707
+1.0
 1
 0
 Number
@@ -1511,7 +1693,7 @@ INPUTBOX
 164
 231
 steps
-730.0
+10.0
 1
 0
 Number
@@ -1842,6 +2024,68 @@ MONITOR
 763
 test
 test1
+17
+1
+14
+
+PLOT
+1618
+10
+2120
+407
+utility
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"pen1" 1.0 0 -16777216 true "" ""
+
+PLOT
+1617
+408
+2125
+792
+trans-utility
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"pen1" 1.0 0 -16777216 true "" ""
+
+SLIDER
+53
+747
+265
+780
+new-seniors-rate-percentage
+new-seniors-rate-percentage
+0
+100
+8.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1268
+230
+1394
+287
+Total Population
+count people
 17
 1
 14

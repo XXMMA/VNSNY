@@ -4,6 +4,7 @@ extensions [gis view2.5d csv table]
 globals [
   test
   test1
+  test2
   ;date
   year
   day
@@ -261,7 +262,7 @@ end
 to load-weights
   set weights table:make
   set floating-weights table:make
-  file-open "data\\weights_f.csv"
+  file-open "data\\weights_f1.csv"
   let headings csv:from-row file-read-line
   while [ not file-at-end? ] [
     let row csv:from-row file-read-line
@@ -728,6 +729,7 @@ end
 ;--------------------------------------------------------------------------------------------------------------------------------------------------------------
 to make-decisions
   set test 0
+  set test1 0
   foreach table:keys pop-ratio-each-type [this-type ->
     let consider-social (table:get total-decisions-each-type this-type) > 0
     let prob-hosp-after-er item 0 table:get prob-hosp-after-decision this-type
@@ -750,14 +752,7 @@ to make-decisions
     set equal-weights-prob 1 - item 0 floating-er-weights
     let mu item 1 floating-er-weights
     let sigma item 2 floating-er-weights
-
-    if roll-dice 1 > equal-weights-prob
-    [
-      set test test + count people with [agent-type = this-type]
-      set wa_er max (list random-normal mu sigma 0)
-      ;set ws_er max (list random-normal mu sigma 0)
-      set we_er max (list random-normal mu sigma 0)
-    ]
+    set ws_er 1.3
 
     let new-decisions_er 0
     let new-decisions_off-cl 0
@@ -768,6 +763,7 @@ to make-decisions
       [
         set next-decision next-decision - 1
         if next-decision <= 0 [
+          set test1 test1 + 1
           if last-update-attr >= attr-update-freq
           [
             set last-update-attr 0
@@ -775,6 +771,14 @@ to make-decisions
           ]
           let potential-interval table:get decision-intervals agent-type
           set next-decision random-choice-under-prob (table:keys potential-interval) (table:values potential-interval)
+
+          if roll-dice 1 > equal-weights-prob
+          [
+            set test test + 1
+            set wa_er max (list random-normal mu sigma 0)
+            ;set ws_er max (list random-normal mu sigma 0)
+            set we_er max (list random-normal mu sigma 0)
+          ]
 
           let attitude_er  w_wfwt_er * want-find-way-to + w_fc_er * feel-cheerful - w_fb_er * feel-bored + w_ffol_er * feel-full-of-life - w_fu_er * feel-upset
           let motivation_er w_keo_er * know-each-other + w_wheo_er * willing-help-each-other + w_cbt_er * can-be-trusted - w_sd_er * self-determin + w_atc_er * adjust-to-change - w_noto_er * no-one-talk-to
@@ -806,7 +810,7 @@ to make-decisions
             ]
             [
               let dice random-float 1
-              ifelse dice < 0.35
+              ifelse dice < 0
               [
                 set new-decisions_er new-decisions_er + 1
                 set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
@@ -865,7 +869,8 @@ to make-decisions
     ]
     update-stats this-type new-decisions_er new-decisions_off-cl
   ]
-  set test1 test / count people
+  if test1 > 0
+  [set test2 test / test1]
 end
 
 to-report roll-dice [x]
@@ -1269,7 +1274,7 @@ INPUTBOX
 2253
 897
 wa_er
-0.0418933971119167
+1.506907398244796
 1
 0
 Number
@@ -1280,7 +1285,7 @@ INPUTBOX
 2409
 897
 ws_er
-1.0
+1.5
 1
 0
 Number
@@ -1291,7 +1296,7 @@ INPUTBOX
 2566
 897
 we_er
-0.6786089816921707
+0.8219709408025946
 1
 0
 Number
@@ -1775,7 +1780,7 @@ INPUTBOX
 145
 681
 equal-weights-prob
-0.75
+0.7
 1
 0
 Number
@@ -1841,10 +1846,21 @@ MONITOR
 1250
 763
 test
-test1
+test2
 17
 1
 14
+
+MONITOR
+1483
+731
+1603
+776
+NIL
+equal-weights-prob
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?

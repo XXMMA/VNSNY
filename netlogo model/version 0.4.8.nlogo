@@ -43,14 +43,21 @@ globals [
   bs
   ae
   be
+
   intervals ;
   last-of-stay ; key: type value: table: key : stay_days value : ratio
   decision-intervals ; key: type value: table: key : interval_days value : ratio
   num-each-type ; key:type value: num of each type
   prob-hosp-after-decision ; key: type value: [ER-ratio Office-ratio]
+  costs-er ; key : type value : [shape scale]
+  costs-off-cl ; key : type value : [shape scale]
+  costs-hosp ; key : type value : [shape scale]
   ;stats
   each-decision-each-type ; key: type value: [ER-decisions-num-by-each-type Office-decisions-num-by-each-type]
   total-decisions-each-type ; key: type value: num-of-decisions-by-each-type
+
+  all-utilities
+  trans-all-utilities
 ]
 
 breed[nyCDs nyCD]
@@ -92,6 +99,7 @@ people-own[
   get-treatment
   in-hosp
   severity
+  decisions-count
   decisions-record ; [er office-clinics]
   decision-type
   hospitalization ; num of hospitalization
@@ -99,6 +107,8 @@ people-own[
   next-decision
   last-update-attr
   loyalty
+  utility
+  utility-group ; 1: low 2: middle 3: high
 ]
 
 nyCDs-own[
@@ -235,6 +245,7 @@ end
 to setup-var
   load-normalize-factor
   load-weights
+  load-costs
   load-last-of-stay
   load-decision-intervals
   load-prob-hosp-after-decision
@@ -269,6 +280,20 @@ to load-weights
     table:put floating-weights (list item 0 row item 5 row) (list item 9 row item 10 row item 11 row)
   ]
   file-close-all
+end
+
+to load-costs
+  set costs-er table:make
+  set costs-off-cl table:make
+  set costs-hosp table:make
+  file-open "data\\costs.csv"
+  let headings csv:from-row file-read-line
+  while [not file-at-end?] [
+    let row csv:from-row file-read-line
+    if item 2 row = 1 [table:put costs-er item 4 row (list item 1 row (1 / item 0 row))]
+    if item 2 row = 2 [table:put costs-off-cl item 4 row (list item 1 row (1 / item 0 row))]
+    if item 2 row = 3 [table:put costs-hosp item 4 row (list item 1 row (1 / item 0 row))]
+  ]
 end
 
 to load-last-of-stay
@@ -721,6 +746,7 @@ end
 to go
   make-decisions
   update-global-var
+  if day mod 90 = 0 [plot-utility]
   tick
 end
 
@@ -761,13 +787,19 @@ to make-decisions
 
     let new-decisions_er 0
     let new-decisions_off-cl 0
+
+    let cost-er table:get costs-er this-type
+    let cost-off-cl table:get costs-off-cl this-type
+    let cost-hosp table:get costs-hosp this-type
+
     ask people with [agent-type = this-type][
       set last-update-attr last-update-attr + 1
       ifelse in-hosp
-      [action-in-hosp]
+      [action-in-hosp cost-hosp]
       [
         set next-decision next-decision - 1
         if next-decision <= 0 [
+          set decisions-count decisions-count + 1
           if last-update-attr >= attr-update-freq
           [
             set last-update-attr 0
@@ -799,6 +831,7 @@ to make-decisions
             [
               set new-decisions_off-cl new-decisions_off-cl + 1
               set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+              set utility utility + (random-gamma item 0 cost-off-cl item 1 cost-off-cl)
               let dice random-float 1
               ifelse dice < prob-hosp-after-off-cl
               [go-to-hosp]
@@ -810,6 +843,7 @@ to make-decisions
               [
                 set new-decisions_er new-decisions_er + 1
                 set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
+                set utility utility + (random-gamma item 0 cost-er item 1 cost-er)
                 let dice1 random-float 1
                 ifelse dice1 < prob-hosp-after-er
                 [go-to-hosp]
@@ -818,6 +852,7 @@ to make-decisions
               [
                 set new-decisions_off-cl new-decisions_off-cl + 1
                 set decisions-record replace-item 1 decisions-record (item 1 decisions-record + 1)
+                set utility utility + (random-gamma item 0 cost-off-cl item 1 cost-off-cl)
                 let dice2 random-float 1
                 ifelse dice2 < prob-hosp-after-off-cl
                 [go-to-hosp]
@@ -828,6 +863,7 @@ to make-decisions
           [
             set new-decisions_er new-decisions_er + 1
             set decisions-record replace-item 0 decisions-record (item 0 decisions-record + 1)
+            set utility utility + (random-gamma item 0 cost-er item 1 cost-er)
             let dice random-float 1
             ifelse dice < prob-hosp-after-er
             [go-to-hosp]
@@ -879,12 +915,12 @@ to go-to-hosp
   set los random-choice-under-prob (table:keys potential-los) (table:values potential-los)
 end
 
-to action-in-hosp
+to action-in-hosp [cost-hosp]
   set days-in-hosp days-in-hosp + 1
   ifelse los > 0
   [
     set los los - 1
-
+    set utility utility + (random-gamma item 0 cost-hosp item 1 cost-hosp)
   ]
   [set in-hosp false]
 end
@@ -918,6 +954,39 @@ to update-global-var
     set day  (day mod 365)
     set year year + 1
   ]
+end
+
+to plot-utility
+  set all-utilities sort-by > [utility] of people with [decisions-count > 0]
+  set trans-all-utilities (list ((item 0 all-utilities) ^ 0.3))
+  ;plotxy 0 item 0 ln-all-utilities
+  let i 1
+  while [i < length all-utilities]
+  [set all-utilities replace-item i all-utilities (item (i - 1) all-utilities + item i all-utilities)
+    set trans-all-utilities lput ((item i all-utilities) ^ 0.3) trans-all-utilities
+   ;plotxy i item i ln-all-utilities
+   set i i + 1]
+  set-current-plot "utility"
+  clear-plot
+  set-current-plot-pen "pen1"
+  set i 0
+  while [i < length all-utilities]
+  [plotxy i item i all-utilities
+   set i i + 1]
+
+  set-current-plot "trans-utility"
+  clear-plot
+  set-current-plot-pen "pen1"
+  set i 0
+  while [i < length trans-all-utilities]
+  [plotxy i item i trans-all-utilities
+   set i i + 1]
+
+  print "----------------------------------"
+  print item 0 all-utilities
+  print item 0 trans-all-utilities
+  print item 1 all-utilities
+  print item 1 trans-all-utilities
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1269,7 +1338,7 @@ INPUTBOX
 2253
 897
 wa_er
-0.0418933971119167
+1.0
 1
 0
 Number
@@ -1291,7 +1360,7 @@ INPUTBOX
 2566
 897
 we_er
-0.6786089816921707
+1.0
 1
 0
 Number
@@ -1845,6 +1914,42 @@ test1
 17
 1
 14
+
+PLOT
+1618
+10
+2120
+407
+utility
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"pen1" 1.0 0 -16777216 true "" ""
+
+PLOT
+1617
+408
+2125
+792
+trans-utility
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"pen1" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
